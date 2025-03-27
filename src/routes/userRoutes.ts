@@ -1,6 +1,14 @@
 import express from "express";
 import { authMiddleware, upload, validate } from "../services";
-import { getUserProfile, loginUser, logoutUser, register, searchUsers, uploadProfilePic } from "../controllers";
+import {
+  getUserProfile,
+  loginUser,
+  logoutUser,
+  register,
+  searchUsers,
+  uploadCoverPhoto,
+  uploadProfilePic,
+} from "../controllers";
 import { loginSchema, registerSchema, searchUserSchema } from "../validations";
 
 const router = express();
@@ -12,8 +20,18 @@ router.delete("/logout", authMiddleware, logoutUser);
 // Search users
 router.get("/search", authMiddleware, validate(searchUserSchema), searchUsers);
 
-// Upload profile picture
-router.post("/upload-profile-pic", authMiddleware, upload.single("profilePic"), uploadProfilePic);
+router.post(
+  "/upload/profile-picture",
+  authMiddleware,
+  upload.single("image"),
+  uploadProfilePic
+);
+router.post(
+  "/upload/cover-photo",
+  authMiddleware,
+  upload.single("image"),
+  uploadCoverPhoto
+);
 
 // Get user profile
 router.get("/profile", authMiddleware, getUserProfile);

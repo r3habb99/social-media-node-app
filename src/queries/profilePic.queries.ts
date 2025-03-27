@@ -2,18 +2,19 @@ import User from "../entities/User.entity";
 import { logger } from "../services";
 
 // Update Profile Picture
-export const updateProfilePicture = async (
+export const updateUserImage = async (
   userId: string,
+  field: "profilePic" | "coverPhoto",
   imageUrl: string
 ) => {
   try {
     return await User.findByIdAndUpdate(
       userId,
-      { profilePic: imageUrl },
+      { [field]: imageUrl }, // Dynamically update field
       { new: true }
     );
   } catch (error) {
-    logger.error("Error updating profile picture", error);
+    logger.error(`Error updating ${field}`, error);
     return null;
   }
 };

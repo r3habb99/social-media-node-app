@@ -1,23 +1,46 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { logger } from "./logger";
 
-// Define upload directory
-const UPLOAD_DIR = path.join(__dirname, "../../uploads/images");
+// Define base upload directory
+const BASE_UPLOAD_DIR = path.join(__dirname, "../../uploads");
 
-// Ensure the upload directory exists
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+// Ensure base directory exists
+if (!fs.existsSync(BASE_UPLOAD_DIR)) {
+  fs.mkdirSync(BASE_UPLOAD_DIR, { recursive: true });
 }
 
-// Configure Multer storage
+// Configure Multer storage dynamically
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, UPLOAD_DIR);
+  destination: (req, _file, cb) => {
+    let uploadFolder = "others"; // Default folder
+
+    if (req.url.includes("profile-picture")) {
+      uploadFolder = "profile-pictures";
+    } else if (req.url.includes("cover-photo")) {
+      uploadFolder = "cover-photos";
+    }
+
+    const finalPath = path.join(BASE_UPLOAD_DIR, uploadFolder);
+
+    // Ensure the specific upload folder exists
+    if (!fs.existsSync(finalPath)) {
+      fs.mkdirSync(finalPath, { recursive: true });
+    }
+
+    cb(null, finalPath);
   },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}${ext}`); // Unique filename with original extension
+  filename: (req, file, cb) => {
+    const uniqueFilename = `${Date.now()}-${file.originalname}`; // Generate unique file name
+
+    // Attach original and unique file names to the request object
+    req.body.originalFileName = file.originalname;
+    req.body.uploadedFileName = uniqueFilename;
+
+    logger.info(`Original: ${file.originalname}, Saved: ${uniqueFilename}`);
+
+    cb(null, uniqueFilename);
   },
 });
 
