@@ -19,6 +19,8 @@ app.use(morgan("dev"));
 
 // Serve static images
 app.use("/public", express.static(path.join(__dirname, "public")));
+// Serve static files (uploaded images)
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 if (NODE_ENV === "development") {
   app.use("*", (req: Request, _res: Response, next: NextFunction) => {

@@ -10,7 +10,7 @@ import { findToken } from "../queries";
 
 dotenv.config();
 
-interface AuthRequest extends Request {
+export interface AuthRequest extends Request {
   user?: JwtPayload;
 }
 
