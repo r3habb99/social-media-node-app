@@ -1,21 +1,17 @@
 import { Request, Response } from "express";
 import {
-  createUser,
-  getAllUsers,
-  getUser,
-  updateUserById,
-  deleteUsersByIds,
-} from "../queries/User.queries";
-import { comparePassword, hashPassword } from "../services/bcryptHelper";
-import { logger } from "../services/logger";
-import { sendResponse } from "../services/responseHelper";
-import {
   ErrorMessageCodes,
   HttpResponseMessages,
   HttpStatusCodes,
 } from "../constants";
-import { generateToken } from "../services/jwtHelper";
-import { saveToken } from "../queries/Token.queries";
+import {
+  comparePassword,
+  generateToken,
+  hashPassword,
+  logger,
+  sendResponse,
+} from "../services";
+import { createUser, getUser, removeToken, saveToken } from "../queries";
 
 // Register a new user
 export const register = async (req: Request, res: Response): Promise<void> => {
@@ -161,6 +157,50 @@ export const loginUser = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error("Error logging in", error);
+    return sendResponse({
+      res,
+      statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
+      error: error,
+    });
+  }
+};
+
+export const logoutUser = async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.header("Authorization");
+    if (!authHeader) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: HttpResponseMessages.BAD_REQUEST,
+        data: "Token is required",
+      });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    if (!token) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: HttpResponseMessages.BAD_REQUEST,
+        data: "Token is missing",
+      });
+    }
+
+    // Remove token from database
+    await removeToken(token);
+
+    logger.info("User logged out successfully");
+    sendResponse({
+      res,
+      statusCode: HttpStatusCodes.OK,
+      message: HttpResponseMessages.SUCCESS,
+      data: "User logged out successfully",
+    });
+  } catch (error) {
+    logger.error("Error logging out", error);
     return sendResponse({
       res,
       statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,

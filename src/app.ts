@@ -1,14 +1,14 @@
+import path from "path";
 import express, { NextFunction, Request, Response } from "express";
 import morgan from "morgan";
 import cors from "cors";
 // import bodyParser from "body-parser";
 import dotenv from "dotenv";
+dotenv.config();
 import indexRoutes from "./routes/indexRoutes";
-import { logger } from "./services/logger";
 import { connectDB } from "./db";
 import { HOST, NODE_ENV, PORT } from "./config";
-import path from "path";
-dotenv.config();
+import { logger } from "./services";
 
 const app = express();
 

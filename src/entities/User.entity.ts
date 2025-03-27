@@ -1,8 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
-import { IUser } from "../interfaces/user.interface";
 import { UserType } from "../constants";
-
-
+import { IUser } from "../interfaces";
 
 const UserSchema = new Schema<IUser>(
   {

@@ -1,5 +1,5 @@
-import mongoose, { Document, Schema } from "mongoose";
-import { IToken } from "../interfaces/token.interface";
+import mongoose, { Schema } from "mongoose";
+import { IToken } from "../interfaces";
 
 const TokenSchema = new Schema<IToken>(
   {

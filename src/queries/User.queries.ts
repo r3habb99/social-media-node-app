@@ -1,6 +1,6 @@
 import User from "../entities/User.entity";
-import { logger } from "../services/logger";
-import { IUser } from "../interfaces/user.interface";
+import { IUser } from "../interfaces";
+import { logger } from "../services";
 
 export const createUser = async (userData: Partial<IUser>): Promise<IUser> => {
   try {

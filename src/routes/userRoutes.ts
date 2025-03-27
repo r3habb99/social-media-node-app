@@ -1,9 +1,15 @@
 import express from "express";
-import { register, loginUser } from "../controllers/user.controller";
+import {
+  register,
+  loginUser,
+  logoutUser,
+} from "../controllers/user.controller";
+import { authMiddleware } from "../services";
 
 const app = express();
 
-app.use("/register", register);
-app.use("/login", loginUser);
+app.post("/register", register);
+app.post("/login", loginUser);
+app.delete("/logout", authMiddleware, logoutUser);
 
 export default app;

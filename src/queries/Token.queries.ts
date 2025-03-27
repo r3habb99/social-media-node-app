@@ -1,5 +1,5 @@
 import Token from "../entities/Token.entity";
-import { logger } from "../services/logger";
+import { logger } from "../services";
 
 /**
  * Saves a token in the database.
@@ -41,6 +41,13 @@ export const deleteToken = async (userId: string): Promise<void> => {
  * @param userId - The ID of the user
  * @returns The found token or null
  */
-export const findToken = async (userId: string) => {
-  return await Token.findOne({ userId });
+export const findToken = async (token: string) => {
+  return await Token.findOne({ token });
+};
+/**
+ * Remove token from the database
+ * @param token - JWT token to remove
+ */
+export const removeToken = async (token: string): Promise<void> => {
+  await Token.deleteOne({ token });
 };
