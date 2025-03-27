@@ -7,10 +7,10 @@ import {
 import { authMiddleware, validate } from "../services";
 import { loginSchema, registerSchema } from "../validations/userSchema";
 
-const app = express();
+const router = express();
 
-app.post("/register", validate(registerSchema), register);
-app.post("/login", validate(loginSchema), loginUser);
-app.delete("/logout", authMiddleware, logoutUser);
+router.post("/register", validate(registerSchema), register);
+router.post("/login", validate(loginSchema), loginUser);
+router.delete("/logout", authMiddleware, logoutUser);
 
-export default app;
+export default router;
