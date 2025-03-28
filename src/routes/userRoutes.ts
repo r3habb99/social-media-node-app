@@ -1,11 +1,14 @@
 import express from "express";
 import { authMiddleware, upload, validate } from "../services";
 import {
+  getUserFollowersController,
+  getUserFollowingController,
   getUserProfile,
   loginUser,
   logoutUser,
   register,
   searchUsers,
+  toggleFollowUser,
   uploadCoverPhoto,
   uploadProfilePic,
 } from "../controllers";
@@ -35,5 +38,10 @@ router.post(
 
 // Get user profile
 router.get("/profile", authMiddleware, getUserProfile);
+
+// Follow/Unfollow a user
+router.put("/:userId/follow", authMiddleware, toggleFollowUser);
+router.get("/:userId/following", authMiddleware, getUserFollowingController);
+router.get("/:userId/followers", authMiddleware, getUserFollowersController);
 
 export default router;

@@ -30,15 +30,24 @@ export const getUser = async (email: string): Promise<IUser | null> => {
   }
 };
 
+export const getUserByID = async (userId: string): Promise<IUser | null> => {
+  try {
+    return await User.findById(userId).lean();
+  } catch (error) {
+    logger.error("❌ Error fetching user by ID:", error);
+    return null;
+  }
+};
+
 export const updateUserById = async (
   userId: string,
   updateData: Partial<IUser>
-) => {
+): Promise<IUser | null> => {
   try {
     return await User.findByIdAndUpdate(userId, updateData, { new: true });
   } catch (error) {
-    logger.error("❌ Error in updating user by ID: ", error);
-    return error;
+    logger.error("❌ Error updating user:", error);
+    throw error;
   }
 };
 
