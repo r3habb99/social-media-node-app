@@ -23,16 +23,19 @@ export const updateUserFollowData = async (
   operation: "$pull" | "$addToSet"
 ) => {
   try {
-    return await Promise.all([
-      User.findByIdAndUpdate(
-        currentUserId,
-        { [operation]: { following: userId } },
-        { new: true }
-      ),
-      User.findByIdAndUpdate(userId, {
-        [operation]: { followers: currentUserId },
-      }),
-    ]);
+    const updatedCurrentUser = await User.findByIdAndUpdate(
+      currentUserId,
+      { [operation]: { following: userId } },
+      { new: true }
+    );
+
+    const updatedTargetUser = await User.findByIdAndUpdate(
+      userId,
+      { [operation]: { followers: currentUserId } },
+      { new: true }
+    );
+
+    return { updatedCurrentUser, updatedTargetUser };
   } catch (error) {
     logger.error("❌ Error updating follow data: ", error);
     throw error;

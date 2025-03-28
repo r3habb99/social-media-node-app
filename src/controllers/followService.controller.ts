@@ -19,6 +19,7 @@ export const toggleFollowUser = async (req: AuthRequest, res: Response) => {
     const currentUserId = req.user?.id;
 
     if (!currentUserId) {
+      logger.error("❌ Unauthorized");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.UNAUTHORIZED,
@@ -28,6 +29,7 @@ export const toggleFollowUser = async (req: AuthRequest, res: Response) => {
     }
 
     if (userId === String(currentUserId)) {
+      logger.error("❌ You cannot follow yourself");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
@@ -35,20 +37,12 @@ export const toggleFollowUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const userToFollow = await findUserById(userId);
-    if (!userToFollow) {
-      return sendResponse({
-        res,
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        message: "User not found",
-      });
-    }
-
-    // Check if the userId and currentUserId are valid ObjectId strings
+    // Validate userId and currentUserId as ObjectId
     if (
       !mongoose.Types.ObjectId.isValid(userId) ||
       !mongoose.Types.ObjectId.isValid(currentUserId)
     ) {
+      logger.error("❌ Invalid user ID");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
@@ -56,32 +50,43 @@ export const toggleFollowUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const isFollowing = userToFollow?.followers?.includes(currentUserId);
+    const userToFollow = await findUserById(userId);
+    if (!userToFollow) {
+      logger.error("❌ User not found");
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        message: "User not found",
+      });
+    }
+
+    // Convert to ObjectId
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+    const currentUserIdObj = new mongoose.Types.ObjectId(currentUserId);
+
+    const isFollowing = userToFollow?.followers?.includes(currentUserIdObj);
     const operation = isFollowing ? "$pull" : "$addToSet";
 
-    // Directly use the string IDs without creating ObjectId instances
-    // Since MongoDB can handle string representations of ObjectIds in queries
-    const updatedUser = await updateUserFollowData(
-      new mongoose.Types.ObjectId(userId),
-      currentUserId,
-      operation
-    );
+    // Update both users' follow data
+    const { updatedCurrentUser, updatedTargetUser } =
+      await updateUserFollowData(currentUserIdObj, userIdObj, operation);
 
     // Send notification if followed
     if (!isFollowing) {
+      logger.info("Inserting notification");
       await insertNotification(
-        new mongoose.Types.ObjectId(userId),
-        currentUserId,
+        userIdObj,
+        currentUserIdObj,
         "follow",
-        currentUserId
+        currentUserIdObj
       );
     }
-
+    logger.info("User followed successfully");
     return sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,
       message: HttpResponseMessages.SUCCESS,
-      data: updatedUser,
+      data: { updatedCurrentUser, updatedTargetUser },
     });
   } catch (error) {
     logger.error("❌ Error in toggleFollowUser:", error);
