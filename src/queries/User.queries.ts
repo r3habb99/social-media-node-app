@@ -1,4 +1,4 @@
-import User from "../entities/User.entity";
+import { User } from "../entities";
 import { IUser } from "../interfaces";
 import { logger } from "../services";
 

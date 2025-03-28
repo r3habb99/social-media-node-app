@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 import { INotification, INotificationModel } from "../interfaces";
 
 const NotificationSchema = new Schema<INotification>(
@@ -67,9 +67,7 @@ NotificationSchema.statics.insertNotification = async function (
   }
 };
 
-const Notification = mongoose.model<INotification, INotificationModel>(
+export const Notification = mongoose.model<INotification, INotificationModel>(
   "Notification",
   NotificationSchema
 );
-
-export default Notification;

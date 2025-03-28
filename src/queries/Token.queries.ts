@@ -1,4 +1,4 @@
-import Token from "../entities/Token.entity";
+import { Token } from "../entities";
 import { logger } from "../services";
 
 /**

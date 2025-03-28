@@ -1,4 +1,4 @@
-import User from "../entities/User.entity";
+import { User } from "../entities";
 import { logger } from "../services";
 
 // Update Profile Picture

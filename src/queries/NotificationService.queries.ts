@@ -1,4 +1,4 @@
-import Notification from "../entities/Notification.entity";
+import { Notification } from "../entities";
 import { logger } from "../services";
 import mongoose from "mongoose";
 
