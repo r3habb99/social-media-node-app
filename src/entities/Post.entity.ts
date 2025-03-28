@@ -38,9 +38,9 @@ const PostSchema = new Schema<IPost>(
     },
     media: [
       {
-        type: String,
+        type: String, // URLs for uploaded media
       },
-    ], // URLs for uploaded media (images/videos)
+    ],
     mediaType: {
       type: String,
       enum: ["image", "video"],
@@ -51,16 +51,8 @@ const PostSchema = new Schema<IPost>(
       default: "public",
     },
     isDeleted: {
-      type: Number,
-      default: 0,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
+      type: Boolean,
+      default: false,
     },
     deletedAt: {
       type: Date,
@@ -68,8 +60,8 @@ const PostSchema = new Schema<IPost>(
     },
   },
   {
-    timestamps: true,
-    versionKey: "__v",
+    timestamps: true, // Auto-manage `createdAt` and `updatedAt`
+    versionKey: false, // Remove `__v` field
     toJSON: {
       transform(doc: Document, ret: any) {
         ret.id = ret._id;

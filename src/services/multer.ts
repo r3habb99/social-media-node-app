@@ -50,10 +50,28 @@ const fileFilter = (
   file: Express.Multer.File,
   cb: multer.FileFilterCallback
 ) => {
-  const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
-  allowedTypes.includes(file.mimetype)
-    ? cb(null, true)
-    : cb(new Error("Only .jpg, .jpeg, and .png formats are allowed!"));
+  console.log(file); // Debugging line
+  console.log("Uploaded File MIME Type:", file.mimetype); // Debugging line
+
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/jpg",
+    "video/mp4",
+    "video/quicktime", // For .mov files
+    "video/x-msvideo", // For .avi files
+  ];
+  console.log(allowedTypes); // Debugging line
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    console.log("Rejected File Type:", file.mimetype); // Debugging line
+    cb(
+      new Error(
+        "Only .jpg, .jpeg, .png, .mp4, .mov, and .avi formats are allowed!"
+      )
+    );
+  }
 };
 
 // Multer instance
