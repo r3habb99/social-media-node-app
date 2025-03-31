@@ -9,6 +9,7 @@ import {
   toggleLikePost,
 } from "../queries";
 import { HttpResponseMessages, HttpStatusCodes } from "../constants";
+import { IPost } from "../interfaces";
 
 // Get all posts
 export const handleGetPosts = async (req: AuthRequest, res: Response) => {
@@ -78,31 +79,21 @@ export const handleGetPostById = async (req: AuthRequest, res: Response) => {
 // Create post
 export const handleCreatePost = async (req: AuthRequest, res: Response) => {
   try {
-    console.log("req.body:", req.body);
-    console.log("req.files:", req.files);
-
     // Ensure either content or media exists
-    if (
-      !req.body.content &&
-      (!req.files || (req.files as Express.Multer.File[]).length === 0)
-    ) {
+    if (!req.body.content) {
       logger.error("Either content or media is required");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
-        message: "Either content or media is required",
-        data: { post: null },
+        message: HttpResponseMessages.BAD_REQUEST,
+        data: { post: null, message: "Either content or media is required" },
       });
     }
 
     const postData = {
-      content: req.body.content || "", // If no content, default to empty string
+      content: req.body.content,
       postedBy: req.user!.id,
-      media: req.files
-        ? (req.files as Express.Multer.File[]).map((file) => file.path)
-        : [],
-      mediaType: req.body.mediaType || (req.files?.length ? "image" : ""), // Set mediaType only if media is present
-      replyTo: req.body.replyTo || undefined,
+      media: req.body.media || [],
       visibility: req.body.visibility || "public",
     };
 

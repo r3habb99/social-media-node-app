@@ -6,7 +6,6 @@ import { logger } from "./logger";
 // Define base upload directory
 const BASE_UPLOAD_DIR = path.join(__dirname, "../../uploads");
 
-// Ensure base directory exists
 if (!fs.existsSync(BASE_UPLOAD_DIR)) {
   fs.mkdirSync(BASE_UPLOAD_DIR, { recursive: true });
 }
@@ -23,8 +22,6 @@ const storage = multer.diskStorage({
     }
 
     const finalPath = path.join(BASE_UPLOAD_DIR, uploadFolder);
-
-    // Ensure the specific upload folder exists
     if (!fs.existsSync(finalPath)) {
       fs.mkdirSync(finalPath, { recursive: true });
     }
@@ -32,40 +29,35 @@ const storage = multer.diskStorage({
     cb(null, finalPath);
   },
   filename: (req, file, cb) => {
-    const uniqueFilename = `${Date.now()}-${file.originalname}`; // Generate unique file name
+    const uniqueFilename = `${Date.now()}-${file.originalname}`;
 
-    // Attach original and unique file names to the request object
     req.body.originalFileName = file.originalname;
     req.body.uploadedFileName = uniqueFilename;
 
-    logger.info(`Original: ${file.originalname}, Saved: ${uniqueFilename}`);
+    // Log filename details for debugging
+    logger.info(`File: ${file.originalname}, Saved as: ${uniqueFilename}`);
 
     cb(null, uniqueFilename);
   },
 });
 
-// File filter to allow only images
 const fileFilter = (
   _req: any,
   file: Express.Multer.File,
   cb: multer.FileFilterCallback
 ) => {
-  console.log(file); // Debugging line
-  console.log("Uploaded File MIME Type:", file.mimetype); // Debugging line
-
   const allowedTypes = [
     "image/jpeg",
     "image/png",
     "image/jpg",
     "video/mp4",
-    "video/quicktime", // For .mov files
-    "video/x-msvideo", // For .avi files
+    "video/quicktime",
+    "video/x-msvideo",
   ];
-  console.log(allowedTypes); // Debugging line
+
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    console.log("Rejected File Type:", file.mimetype); // Debugging line
     cb(
       new Error(
         "Only .jpg, .jpeg, .png, .mp4, .mov, and .avi formats are allowed!"
@@ -74,7 +66,6 @@ const fileFilter = (
   }
 };
 
-// Multer instance
 export const upload = multer({
   storage,
   fileFilter,

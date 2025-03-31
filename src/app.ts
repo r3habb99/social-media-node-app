@@ -2,18 +2,18 @@ import path from "path";
 import express, { NextFunction, Request, Response } from "express";
 import morgan from "morgan";
 import cors from "cors";
-// import bodyParser from "body-parser";
+import bodyParser from "body-parser";
 import dotenv from "dotenv";
 dotenv.config();
 import indexRoutes from "./routes/indexRoutes";
 import { connectDB } from "./db";
 import { HOST, NODE_ENV, PORT } from "./config";
-import { logger } from "./services";
+import { logger, upload } from "./services";
 
 const app = express();
-
+app.use(upload.any());
 app.use(express.json());
-// app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
 app.use(morgan("dev"));
 

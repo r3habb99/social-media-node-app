@@ -80,7 +80,11 @@ export const retweetPost = async (
       return { post: deletedPost, deleted: true };
     }
 
-    const repost = await Post.create({ postedBy: userId, retweetData: postId });
+    const repost = await Post.create({
+      postedBy: userId,
+      retweetData: postId,
+      retweetUsers: userId,
+    });
     return { post: repost, deleted: false };
   } catch (error) {
     logger.error(`Error retweeting post: ${error}`);

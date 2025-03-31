@@ -70,5 +70,5 @@ const PostSchema = new Schema<IPost>(
     },
   }
 );
-
+PostSchema.index({ postedBy: 1, createdAt: -1 });
 export const Post: Model<IPost> = mongoose.model<IPost>("Post", PostSchema);
