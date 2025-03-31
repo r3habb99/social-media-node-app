@@ -14,7 +14,14 @@ const app = express();
 app.use(upload.any());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:5173"], // Replace with your React frontend URL
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true, // Allows cookies and credentials
+  })
+);
 app.use(morgan("dev"));
 
 // Serve static images
