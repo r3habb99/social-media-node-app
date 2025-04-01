@@ -4,5 +4,5 @@ export * from "./profilePicture.controller";
 export * from "./followService.controller";
 export * from "./notification.controller";
 export * from "./post.controller";
-// export * from "./message.controller";
-// export * from "./chat.controller"
+export * from "./message.controller";
+export * from "./chat.controller";

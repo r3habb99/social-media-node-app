@@ -5,3 +5,5 @@ export * from "./ProfilePic.queries";
 export * from "./FollowerService.queries";
 export * from "./NotificationService.queries";
 export * from "./Post.queries";
+export * from "./chat.queries";
+export * from "./message.queries";

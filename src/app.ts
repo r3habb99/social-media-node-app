@@ -1,32 +1,41 @@
-import path from "path";
 import express, { NextFunction, Request, Response } from "express";
+import path from "path";
 import morgan from "morgan";
 import cors from "cors";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
 dotenv.config();
-import indexRoutes from "./routes/indexRoutes";
+
+// Importing custom modules
 import { connectDB } from "./db";
 import { HOST, NODE_ENV, PORT } from "./config";
 import { logger, upload } from "./services";
+import { createServer } from "http";
+import { initializeSocket } from "./socket";
+
+// Importing routes
+import indexRoutes from "./routes/indexRoutes";
 
 const app = express();
+const httpServer = createServer(app); // Create HTTP server
+
 app.use(upload.any());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
 app.use(
   cors({
-    origin: ["http://localhost:5173"], // Replace with your React frontend URL
+    origin: ["http://192.168.0.88:5173", "http://192.168.0.88:3000"], // Replace with your React frontend URL
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true, // Allows cookies and credentials
+    credentials: true,
   })
 );
+
 app.use(morgan("dev"));
 
 // Serve static images
 app.use("/public", express.static(path.join(__dirname, "public")));
-// Serve static files (uploaded images)
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 if (NODE_ENV === "development") {
@@ -38,6 +47,9 @@ if (NODE_ENV === "development") {
 }
 
 app.use("/api", indexRoutes);
+
+// Initialize WebSocket server
+const io = initializeSocket(httpServer);
 
 export const startServer = () => {
   try {
@@ -53,7 +65,8 @@ export const startServer = () => {
     } else {
       logger.warn("HOST is not defined, unable to log the URL.");
     }
-    app.listen(portNumber, () => {
+
+    httpServer.listen(portNumber, () => {
       logger.info("✅ Database Connected Successfully....");
       logger.info(`Chat-Service Server is running on port ${PORT}`);
       logger.info(`===============================================`);
