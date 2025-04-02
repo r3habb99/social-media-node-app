@@ -12,9 +12,6 @@ export const saveMessage = async (
   chat: mongoose.Types.ObjectId
 ): Promise<IMessage> => {
   try {
-    logger.info("Saving message to database...");
-    logger.info(`Sender: ${sender}, Content: ${content}, Chat: ${chat}`);
-
     const newMessage: Partial<IMessage> = {
       sender,
       content,
@@ -22,12 +19,8 @@ export const saveMessage = async (
     };
 
     const message = await Message.create(newMessage);
-    logger.info("Message created:", message);
-
     // Update the latest message in the chat
     await Chat.findByIdAndUpdate(chat, { latestMessage: message._id });
-    logger.info("Updated latest message in chat:", chat);
-
     // Populate sender and chat before returning the message
     const populatedMessage = await Message.findById(message._id)
       .populate("sender", "-password")
@@ -37,8 +30,6 @@ export const saveMessage = async (
     if (!populatedMessage) {
       throw new Error("Message creation failed");
     }
-
-    logger.info("Populated message:", populatedMessage);
     return populatedMessage as IMessage;
   } catch (error) {
     logger.error("Error saving message", error);
