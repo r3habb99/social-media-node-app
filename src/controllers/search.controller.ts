@@ -2,35 +2,38 @@ import { Request, Response } from "express";
 import { logger, sendResponse } from "../services";
 import { HttpResponseMessages, HttpStatusCodes } from "../constants";
 import { searchUsersInDB } from "../queries";
-import { ISearch } from "../interfaces";
 
 export const searchUsers = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const { username, firstName, lastName, email } = req.query;
+    // Retrieve the 'query' parameter from the request
+    const { query } = req.query; // Extract 'query' from query parameters
 
-    // Ensure values are strings or undefined
-    const searchParams: Partial<ISearch> = {
-      username: typeof username === "string" ? username : undefined,
-      firstName: typeof firstName === "string" ? firstName : undefined,
-      lastName: typeof lastName === "string" ? lastName : undefined,
-      email: typeof email === "string" ? email : undefined,
-    };
+    if (!query || typeof query !== "string" || query.trim() === "") {
+      // If no query is provided, send a bad request response
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: HttpResponseMessages.BAD_REQUEST,
+        data: "Please provide a valid search query.",
+      });
+    }
 
-    // Fetch users based on query
-    const users = await searchUsersInDB(searchParams);
+    // Proceed with searching users
+    const users = await searchUsersInDB(query);
 
     if (!users.length) {
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.NOT_FOUND,
         message: HttpResponseMessages.NOT_FOUND,
-        data: "No users found",
+        data: "No users found matching your search query.",
       });
     }
 
+    // If users are found, send them in the response
     logger.info("✅ Users retrieved successfully");
     sendResponse({
       res,
@@ -39,6 +42,7 @@ export const searchUsers = async (
       data: users,
     });
   } catch (error) {
+    // Catch any errors and send an internal server error response
     logger.error("❌ Error searching users", error);
     sendResponse({
       res,

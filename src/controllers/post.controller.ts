@@ -9,7 +9,6 @@ import {
   toggleLikePost,
 } from "../queries";
 import { HttpResponseMessages, HttpStatusCodes } from "../constants";
-import { IPost } from "../interfaces";
 
 // Get all posts
 export const handleGetPosts = async (req: AuthRequest, res: Response) => {
