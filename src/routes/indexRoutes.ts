@@ -2,8 +2,8 @@ import express from "express";
 import userRoutes from "./userRoutes";
 import notificationRoutes from "./notificationRoutes";
 import postRoutes from "./postRoutes";
-import chatRoutes from "./chat.routes";
-import messageRoutes from "./message.routes";
+import chatRoutes from "./chatRoutes";
+import messageRoutes from "./messageRoutes";
 const app = express();
 
 app.use("/user", userRoutes);
