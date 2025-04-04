@@ -5,13 +5,20 @@ import {
   HttpStatusCodes,
 } from "../constants";
 import {
+  AuthRequest,
   comparePassword,
   generateToken,
   hashPassword,
   logger,
   sendResponse,
 } from "../services";
-import { createUser, getUser, removeToken, saveToken } from "../queries";
+import {
+  createUser,
+  getUser,
+  removeToken,
+  saveToken,
+  updateUserById,
+} from "../queries";
 
 // Register a new user
 export const register = async (req: Request, res: Response): Promise<void> => {
@@ -141,7 +148,7 @@ export const loginUser = async (req: Request, res: Response) => {
     await saveToken(userId, token);
 
     const userData = {
-      id: user.id,
+      id: userId,
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
@@ -210,3 +217,48 @@ export const logoutUser = async (req: Request, res: Response) => {
   }
 };
 
+export const updateUser = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const updateData = req.body;
+
+    if (!userId || Object.keys(updateData).length === 0) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: HttpResponseMessages.BAD_REQUEST,
+        data: "User ID and update data are required",
+      });
+    }
+
+    const updatedUser = await updateUserById(userId, updateData);
+
+    if (!updatedUser) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        message: HttpResponseMessages.NOT_FOUND,
+        data: "User not found",
+      });
+    }
+
+    logger.info(`✅ User (${userId}) updated successfully`);
+    return sendResponse({
+      res,
+      statusCode: HttpStatusCodes.OK,
+      message: HttpResponseMessages.SUCCESS,
+      data: updatedUser,
+    });
+  } catch (error) {
+    logger.error("❌ Error updating user", error);
+    return sendResponse({
+      res,
+      statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
+      error,
+    });
+  }
+};

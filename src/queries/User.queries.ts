@@ -11,7 +11,6 @@ export const createUser = async (userData: Partial<IUser>): Promise<IUser> => {
     throw error;
   }
 };
-
 export const getAllUsers = async () => {
   try {
     return await User.find();

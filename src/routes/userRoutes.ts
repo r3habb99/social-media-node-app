@@ -9,6 +9,7 @@ import {
   register,
   searchUsers,
   toggleFollowUser,
+  updateUser,
   uploadCoverPhoto,
   uploadProfilePic,
 } from "../controllers";
@@ -19,6 +20,8 @@ const router = express();
 router.post("/register", validate(registerSchema), register);
 router.post("/login", validate(loginSchema), loginUser);
 router.delete("/logout", authMiddleware, logoutUser);
+
+router.put("/update", authMiddleware, updateUser);
 
 // Search users
 router.get("/search", authMiddleware, validate(searchUserSchema), searchUsers);
