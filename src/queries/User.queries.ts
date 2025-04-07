@@ -22,18 +22,9 @@ export const getAllUsers = async () => {
 
 export const getUser = async (email: string): Promise<IUser | null> => {
   try {
-    return await User.findOne({ email }).lean(); // `.lean()` returns plain JS object
+    return await User.findOne({ email }).lean();
   } catch (error) {
     logger.error("❌ Error fetching user by email: ", error);
-    return null;
-  }
-};
-
-export const getUserByID = async (userId: string): Promise<IUser | null> => {
-  try {
-    return await User.findById(userId).lean();
-  } catch (error) {
-    logger.error("❌ Error fetching user by ID:", error);
     return null;
   }
 };
@@ -59,5 +50,26 @@ export const deleteUsersByIds = async (userIds: string[]) => {
   } catch (error) {
     logger.error("❌ Error in deleting users by IDs: ", error);
     return error;
+  }
+};
+
+export const searchUser = async (query: string) => {
+  try {
+    const searchQuery = {
+      $or: [
+        { username: { $regex: query, $options: "i" } },
+        { firstName: { $regex: query, $options: "i" } },
+        { lastName: { $regex: query, $options: "i" } },
+        { email: { $regex: query, $options: "i" } },
+      ],
+    };
+
+    // Query the User collection with the built search query
+    const users = await User.find(searchQuery);
+
+    return users; // Return the users matching the search query
+  } catch (error) {
+    logger.error("Error searching users in database", error);
+    return []; // Return an empty array in case of error
   }
 };

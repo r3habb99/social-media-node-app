@@ -8,7 +8,12 @@ import { saveMessage } from "./queries";
 export const initializeSocket = (httpServer: HTTPServer): Server => {
   const io = new Server(httpServer, {
     cors: {
-      origin: ["http://192.168.0.88:3000"], // Allowed frontend origins
+      // origin: ["http://localhost:3000"],
+      origin: [
+        "http://192.168.0.88:3000",
+        "http://192.168.1.9:3000",
+        "http://localhost:3000",
+      ], // Allowed frontend origins
       methods: ["GET", "POST"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,

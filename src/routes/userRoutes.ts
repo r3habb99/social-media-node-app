@@ -1,6 +1,7 @@
 import express from "express";
 import { authMiddleware, upload, validate } from "../services";
 import {
+  fetchUser,
   getUserFollowersController,
   getUserFollowingController,
   getUserProfile,
@@ -23,6 +24,7 @@ router.delete("/logout", authMiddleware, logoutUser);
 
 router.put("/update", authMiddleware, updateUser);
 
+router.get("/", authMiddleware, fetchUser);
 // Search users
 router.get("/search", authMiddleware, validate(searchUserSchema), searchUsers);
 
@@ -41,6 +43,7 @@ router.post(
 
 // Get user profile
 router.get("/profile", authMiddleware, getUserProfile);
+router.get("/:userId", authMiddleware, getUserProfile);
 
 // Follow/Unfollow a user
 router.put("/:userId/follow", authMiddleware, toggleFollowUser);

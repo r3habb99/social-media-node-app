@@ -6,29 +6,31 @@ import { logger } from "../services";
 // Get Posts with Filters
 export const getPosts = async (filter: object): Promise<IPost[]> => {
   try {
-    return await Post.find({ isDeleted: false, ...filter })
-      .populate("postedBy")
+    const posts = await Post.find({ isDeleted: false, ...filter })
+      .populate("postedBy") // Populate the postedBy field (user data)
       .populate("retweetData")
       .populate("replyTo")
       .sort({ createdAt: -1 })
       .exec();
+    return posts || []; // Ensure an empty array is returned if no posts are found
   } catch (error) {
     logger.error(`Error fetching posts: ${error}`);
-    return [];
+    return []; // Return empty array in case of error
   }
 };
 
 // Get a single Post by ID
 export const getPostById = async (postId: string): Promise<IPost | null> => {
   try {
-    return await Post.findOne({ _id: postId, isDeleted: false })
+    const post = await Post.findOne({ _id: postId, isDeleted: false })
       .populate("postedBy")
-      .populate("replyTo")
       .populate("retweetData")
+      .populate("replyTo")
       .exec();
+    return post || null; // Ensure null is returned if post is not found
   } catch (error) {
     logger.error(`Error fetching post by ID: ${error}`);
-    return null;
+    return null; // Return null in case of error
   }
 };
 
@@ -49,16 +51,18 @@ export const toggleLikePost = async (
 ): Promise<IPost | null> => {
   try {
     const post = await Post.findById(postId);
-    if (!post || post.isDeleted) return null;
+    if (!post || post.isDeleted) return null; // If post doesn't exist or is deleted, return null
 
     const isLiked = post.likes.includes(new mongoose.Types.ObjectId(userId));
-    const option = isLiked ? "$pull" : "$addToSet";
+    const option = isLiked ? "$pull" : "$addToSet"; // Toggle like using $pull and $addToSet
 
-    return await Post.findByIdAndUpdate(
+    const updatedPost = await Post.findByIdAndUpdate(
       postId,
-      { [option]: { likes: userId } },
+      { [option]: { likes: new mongoose.Types.ObjectId(userId) } }, // Add/remove the userId
       { new: true }
-    );
+    ).populate("postedBy"); // Populate postedBy with user data for username
+
+    return updatedPost;
   } catch (error) {
     logger.error(`Error toggling like on post: ${error}`);
     return null;
@@ -85,10 +89,13 @@ export const retweetPost = async (
       retweetData: postId,
       retweetUsers: userId,
     });
+
+    await repost.populate("postedBy"); // Populate postedBy to include user data
+
     return { post: repost, deleted: false };
   } catch (error) {
     logger.error(`Error retweeting post: ${error}`);
-    return { post: null };
+    return { post: null }; // Return null if there is an error
   }
 };
 
