@@ -4,6 +4,7 @@ import {
   fetchUser,
   getUserFollowersController,
   getUserFollowingController,
+  getUserID,
   getUserProfile,
   loginUser,
   logoutUser,
@@ -43,7 +44,7 @@ router.post(
 
 // Get user profile
 router.get("/profile", authMiddleware, getUserProfile);
-router.get("/:userId", authMiddleware, getUserProfile);
+router.get("/:userId", authMiddleware, getUserID);
 
 // Follow/Unfollow a user
 router.put("/:userId/follow", authMiddleware, toggleFollowUser);

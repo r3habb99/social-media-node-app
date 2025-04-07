@@ -312,7 +312,7 @@ export const fetchUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const getUserProfile = async (req: Request, res: Response) => {
+export const getUserID = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
 
