@@ -2,6 +2,7 @@ import express from "express";
 import { authMiddleware, upload, validate } from "../services";
 import {
   fetchUser,
+  forgotPassword,
   getUserFollowersController,
   getUserFollowingController,
   getUserID,
@@ -9,15 +10,24 @@ import {
   loginUser,
   logoutUser,
   register,
+  resetPassword,
   searchUsers,
+  submitNewPassword,
   toggleFollowUser,
   updateUser,
   uploadCoverPhoto,
   uploadProfilePic,
 } from "../controllers";
-import { loginSchema, registerSchema, searchUserSchema } from "../validations";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  newPasswordSchema,
+  registerSchema,
+  resetPasswordSchema,
+  searchUserSchema,
+} from "../validations";
 
-const router = express();
+const router = express.Router();
 
 router.post("/register", validate(registerSchema), register);
 router.post("/login", validate(loginSchema), loginUser);
@@ -50,5 +60,15 @@ router.get("/:userId", authMiddleware, getUserID);
 router.put("/:userId/follow", authMiddleware, toggleFollowUser);
 router.get("/:userId/following", authMiddleware, getUserFollowingController);
 router.get("/:userId/followers", authMiddleware, getUserFollowersController);
+
+// 🔐 New Routes for Password Management
+router.put(
+  "/reset-password",
+  authMiddleware,
+  validate(resetPasswordSchema),
+  resetPassword
+);
+router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
+router.post("/reset/:token", validate(newPasswordSchema), submitNewPassword);
 
 export default router;

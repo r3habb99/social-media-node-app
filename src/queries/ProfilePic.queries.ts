@@ -28,3 +28,12 @@ export const getUserById = async (userId: string) => {
     return null;
   }
 };
+// Get User Profile (excluding password)
+export const getUserForPassword = async (userId: string) => {
+  try {
+    return await User.findById(userId).select("+password");
+  } catch (error) {
+    logger.error("Error fetching user by id", error);
+    return null;
+  }
+};

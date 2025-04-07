@@ -6,3 +6,4 @@ export * from "./notification.controller";
 export * from "./post.controller";
 export * from "./message.controller";
 export * from "./chat.controller";
+export * from "./password.controller";

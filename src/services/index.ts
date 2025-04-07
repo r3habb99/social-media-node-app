@@ -5,3 +5,4 @@ export * from "./authMiddleware";
 export * from "./bcryptHelper";
 export * from "./jwtHelper";
 export * from "./multer";
+export * from "./mailer"
