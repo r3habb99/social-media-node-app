@@ -26,6 +26,7 @@ export const resetPassword = async (
     const { oldPassword, newPassword, confirmPassword } = req.body;
 
     if (!userId || !oldPassword || !newPassword || !confirmPassword) {
+      logger.info("All fields are required");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
@@ -35,6 +36,7 @@ export const resetPassword = async (
     }
 
     if (newPassword !== confirmPassword) {
+      logger.info("New password and confirm password do not match");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
@@ -45,6 +47,7 @@ export const resetPassword = async (
 
     const user = await getUserForPassword(userId);
     if (!user || typeof user.password !== "string") {
+      logger.info("User not found or password is not a string");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -55,6 +58,7 @@ export const resetPassword = async (
 
     const isMatch = await comparePassword(oldPassword, user.password);
     if (!isMatch) {
+      logger.info("Old password is incorrect");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
@@ -93,6 +97,7 @@ export const forgotPassword = async (
     const user = await getUser(email);
     const userId = user?._id as string;
     if (!email) {
+      logger.info("Email is required");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
@@ -102,6 +107,7 @@ export const forgotPassword = async (
     }
 
     if (!user) {
+      logger.info("User with this email does not exist");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -111,6 +117,8 @@ export const forgotPassword = async (
     }
     // Ensure user properties exist before generating token
     if (!userId || !user.firstName || !user.email || !user.username) {
+      logger.info("Missing required user properties for token generation");
+
       throw new Error("Missing required user properties for token generation");
     }
     // Generate token
@@ -122,10 +130,9 @@ export const forgotPassword = async (
       userType: user.userType,
     });
     const resetLink = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
-
+    logger.info(`${resetLink}`);
     await sendResetPasswordEmail(email, resetLink);
     logger.info(`✅ Password reset link sent to ${email}`);
-
     return sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,
@@ -153,6 +160,7 @@ export const submitNewPassword = async (
     const { newPassword, confirmPassword } = req.body;
 
     if (!token || !newPassword || !confirmPassword) {
+      logger.info("All fields are required");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
@@ -162,6 +170,7 @@ export const submitNewPassword = async (
     }
 
     if (newPassword !== confirmPassword) {
+      logger.info("Passwords do not match");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
@@ -176,6 +185,7 @@ export const submitNewPassword = async (
     const user = await getUserById(decoded.id);
 
     if (!user) {
+      logger.info("Invalid or expired token");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.NOT_FOUND,

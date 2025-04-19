@@ -23,26 +23,27 @@ app.use(upload.any());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.use(cors());
-// {
-//   origin: (origin, callback) => {
-//     // Allow any origin or check for a specific one
-//     const allowedOrigins = [
-//       // "http://localhost:5173",
-//       // "http://localhost:3000",
-//       // "http://localhost:8080",
-//       "http://192.168.0.88:8080",
-//     ];
-//     if (!origin || allowedOrigins.indexOf(origin) === -1) {
-//       callback(new Error("Not allowed by CORS"));
-//     } else {
-//       callback(null, true);
-//     }
-//   },
-//   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-//   allowedHeaders: ["Content-Type", "Authorization"],
-//   credentials: true,
-// }
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow any origin or check for a specific one
+      const allowedOrigins = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "http://192.168.0.88:8080",
+      ];
+      if (!origin || allowedOrigins.indexOf(origin) === -1) {
+        callback(new Error("Not allowed by CORS"));
+      } else {
+        callback(null, true);
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 
 app.use(morgan("dev"));
 
@@ -50,13 +51,12 @@ app.use(morgan("dev"));
 app.use("/public", express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-if (NODE_ENV === "development") {
-  app.use("*", (req: Request, _res: Response, next: NextFunction) => {
-    const logMessage = `Request method: ${req.method}, Request URL: ${req.originalUrl} `;
-    logger.info(logMessage);
-    next();
-  });
-}
+// Request logging middleware
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  const logMessage = `Request method: ${req.method}, Request URL: ${req.originalUrl}`;
+  logger.info(logMessage);
+  next();
+});
 
 app.use("/api", indexRoutes);
 
@@ -93,3 +93,9 @@ export const startServer = () => {
     process.exit(1); // Exit process on failure
   }
 };
+
+// Error handling middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  logger.error("Unhandled error:", err);
+  res.status(500).json({ error: "Internal Server Error" });
+});
