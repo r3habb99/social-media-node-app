@@ -4,6 +4,8 @@ import morgan from "morgan";
 import cors from "cors";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 dotenv.config();
 
 // Importing custom modules
@@ -18,6 +20,18 @@ import indexRoutes from "./routes/indexRoutes";
 
 const app = express();
 const httpServer = createServer(app); // Create HTTP server
+
+// Security middleware
+app.use(helmet());
+
+// Rate limiting middleware
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
 
 app.use(upload.any());
 app.use(express.json());
@@ -58,7 +72,21 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
+// Health check endpoint
+app.get("/health", (_req: Request, res: Response) => {
+  res.status(200).json({ status: "OK" });
+});
+
 app.use("/api", indexRoutes);
+
+// Global error handling middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  logger.error("Global error handler:", err);
+  res.status(err.status || 500).json({
+    message: err.message || "Internal Server Error",
+    error: NODE_ENV === "development" ? err : {},
+  });
+});
 
 // Initialize WebSocket server
 const io = initializeSocket(httpServer);
