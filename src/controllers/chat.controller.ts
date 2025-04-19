@@ -1,34 +1,43 @@
-import { Request, Response, NextFunction } from "express";
+import { NextFunction, Request, Response } from "express";
 import { AuthRequest, logger, sendResponse } from "../services";
 import { createMessage, fetchUserMessages, getMessages } from "../queries";
+import { Chat, Message } from "../entities";
+import mongoose from "mongoose";
 import { HttpResponseMessages, HttpStatusCodes } from "../constants";
+
 /**
- * Create a new chat
+ * Create a new individual chat
  */
-export const createChat = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const createChat = async (req: AuthRequest, res: Response) => {
   try {
-    const { users, chatName } = req.body;
-    if (!users || users.length === 0) {
-      logger.error("Users array is required");
+    const { userId } = req.body; // ID of the user to chat with
+    const currentUserId = req.user?.id;
+
+    if (!userId || !currentUserId) {
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
-        message: HttpResponseMessages.BAD_REQUEST,
-        error: "Users array is required",
+        message: "Both userId and currentUserId are required",
       });
     }
 
-    // Extract user ID from the token (auth middleware should attach user object to req)
-    const userId = req.user?.id;
-    users.push(userId);
+    // Check if a chat already exists between the two users
+    let chat = await Chat.findOne({
+      isGroupChat: false,
+      users: { $all: [currentUserId, userId] },
+    });
 
-    const chat = await createMessage(users, chatName);
-    logger.info("Chat created successfully", chat);
-    sendResponse({
+    if (!chat) {
+      // Create a new chat if it doesn't exist
+      chat = await Chat.create({
+        chatName: "Individual Chat",
+        isGroupChat: false,
+        users: [currentUserId, userId],
+      });
+    }
+
+    logger.info("Chat created successfully");
+    return sendResponse({
       res,
       statusCode: HttpStatusCodes.CREATED,
       message: HttpResponseMessages.CREATED,
@@ -36,11 +45,127 @@ export const createChat = async (
     });
   } catch (error) {
     logger.error("Error creating chat", error);
-    sendResponse({
+    return sendResponse({
       res,
       statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
       message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
-      error: error,
+      error,
+    });
+  }
+};
+
+/**
+ * Create a new group chat
+ */
+export const createGroupChat = async (req: AuthRequest, res: Response) => {
+  try {
+    const { users, chatName } = req.body;
+    const currentUserId = req.user?.id;
+
+    if (!users || users.length < 2 || !chatName) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "A group chat requires at least 2 users and a chat name",
+      });
+    }
+
+    // Add the current user to the group
+    users.push(currentUserId);
+
+    const chat = await Chat.create({
+      chatName,
+      isGroupChat: true,
+      users,
+    });
+
+    logger.info("Group chat created successfully");
+    return sendResponse({
+      res,
+      statusCode: HttpStatusCodes.CREATED,
+      message: HttpResponseMessages.CREATED,
+      data: chat,
+    });
+  } catch (error) {
+    logger.error("Error creating group chat", error);
+    return sendResponse({
+      res,
+      statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
+      error,
+    });
+  }
+};
+
+/**
+ * Get messages for a specific chat
+ */
+export const getChatMessages = async (req: AuthRequest, res: Response) => {
+  try {
+    const { chatId } = req.params;
+
+    const messages = await Message.find({ chat: chatId })
+      .populate("sender", "-password")
+      .sort({ createdAt: 1 });
+
+    logger.info("Messages retrieved successfully");
+    return sendResponse({
+      res,
+      statusCode: HttpStatusCodes.OK,
+      message: HttpResponseMessages.SUCCESS,
+      data: messages,
+    });
+  } catch (error) {
+    logger.error("Error retrieving messages", error);
+    return sendResponse({
+      res,
+      statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
+      error,
+    });
+  }
+};
+
+/**
+ * Send a message in a chat
+ */
+export const sendMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    const { chatId } = req.params;
+    const { content } = req.body;
+    const senderId = req.user?.id;
+
+    if (!content || !chatId) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "Content and chatId are required",
+      });
+    }
+
+    const message = await Message.create({
+      sender: senderId,
+      content,
+      chat: chatId,
+    });
+
+    // Update the latest message in the chat
+    await Chat.findByIdAndUpdate(chatId, { latestMessage: message._id });
+
+    logger.info("Message sent successfully");
+    return sendResponse({
+      res,
+      statusCode: HttpStatusCodes.CREATED,
+      message: HttpResponseMessages.CREATED,
+      data: message,
+    });
+  } catch (error) {
+    logger.error("Error sending message", error);
+    return sendResponse({
+      res,
+      statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
+      error,
     });
   }
 };
@@ -75,42 +200,6 @@ export const getUserChats = async (
     });
   } catch (error) {
     logger.error("Error fetching user chats", error);
-    sendResponse({
-      res,
-      statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
-      error: error,
-    });
-  }
-};
-
-/**
- * Get messages for a specific chat
- */
-export const getChatMessages = async (req: Request, res: Response) => {
-  try {
-    const chatId = req.params.chatId;
-    console.log(chatId, "chatId from getChatMessages");
-    const messages = await getMessages(chatId);
-    logger.info("Fetched messages for chat", chatId, messages);
-    if (!messages || messages.length === 0) {
-      logger.warn("No messages found for chat", chatId);
-      return sendResponse({
-        res,
-        statusCode: HttpStatusCodes.NO_CONTENT,
-        message: HttpResponseMessages.NO_CONTENT,
-        error: "No messages found for this chat",
-      });
-    }
-    logger.info("Messages fetched successfully", messages);
-    sendResponse({
-      res,
-      statusCode: HttpStatusCodes.OK,
-      message: HttpResponseMessages.SUCCESS,
-      data: messages,
-    });
-  } catch (error) {
-    logger.error("Error fetching chat messages", error);
     sendResponse({
       res,
       statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,

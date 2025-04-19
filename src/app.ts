@@ -38,25 +38,26 @@ app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow any origin or check for a specific one
-      const allowedOrigins = [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://localhost:8080",
-        "http://192.168.0.88:8080",
-      ];
-      if (!origin || allowedOrigins.indexOf(origin) === -1) {
-        callback(new Error("Not allowed by CORS"));
-      } else {
-        callback(null, true);
-      }
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
+  cors()
+  //   {
+  //   origin: (origin, callback) => {
+  //     // Allow any origin or check for a specific one
+  //     const allowedOrigins = [
+  //       "http://localhost:5173",
+  //       "http://localhost:3000",
+  //       "http://localhost:8080",
+  //       "http://192.168.0.88:8080",
+  //     ];
+  //     if (!origin || allowedOrigins.indexOf(origin) === -1) {
+  //       callback(new Error("Not allowed by CORS"));
+  //     } else {
+  //       callback(null, true);
+  //     }
+  //   },
+  //   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  //   allowedHeaders: ["Content-Type", "Authorization"],
+  //   credentials: true,
+  // }
 );
 
 app.use(morgan("dev"));
