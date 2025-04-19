@@ -4,11 +4,16 @@ import mongoose from "mongoose";
 import { IMessage } from "./interfaces";
 import { logger } from "./services";
 import { saveMessage } from "./queries";
+import { verifyToken } from "./services/jwtHelper";
+import { JWT_SECRET } from "./config";
+
+interface IUserSocket extends Socket {
+  userId?: string;
+}
 
 export const initializeSocket = (httpServer: HTTPServer): Server => {
   const io = new Server(httpServer, {
     cors: {
-      // origin: ["http://localhost:3000"],
       origin: [
         "http://192.168.0.88:3000",
         "http://192.168.1.9:3000",
@@ -21,20 +26,50 @@ export const initializeSocket = (httpServer: HTTPServer): Server => {
     },
   });
 
-  io.on("connection", (socket: Socket) => {
-    logger.info(`🔌 A user connected: ${socket.id}`);
+  // Map to track online users and their socket IDs
+  const onlineUsers = new Map<string, string>();
 
-    // Handle user setup
-    socket.on("setup", (userData) => {
-      logger.info(`📡 Received 'setup' event: ${JSON.stringify(userData)}`);
-      if (!userData || !userData._id) {
-        logger.error("❌ Invalid userData received");
-        return;
+  io.use((socket: IUserSocket, next) => {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+      logger.error("Socket connection rejected: No token provided");
+      return next(new Error("Authentication error: No token provided"));
+    }
+    try {
+      if (!JWT_SECRET) {
+        throw new Error("JWT_SECRET is not defined");
       }
-      socket.join(userData._id);
-      logger.info(`✅ User ${userData._id} joined personal room`);
-      socket.emit("setup complete", userData._id);
-    });
+      const decoded = verifyToken(token, JWT_SECRET);
+      if (!decoded) {
+        logger.error("Socket connection rejected: Invalid token");
+        return next(new Error("Authentication error: Invalid token"));
+      }
+      socket.userId = decoded.id;
+      next();
+    } catch (err) {
+      logger.error("Socket connection rejected:", err);
+      return next(new Error("Authentication error"));
+    }
+  });
+
+  io.on("connection", (socket: IUserSocket) => {
+    if (!socket.userId) {
+      logger.error("Socket connected without userId");
+      socket.disconnect();
+      return;
+    }
+    logger.info(`🔌 User connected: ${socket.userId} (socket id: ${socket.id})`);
+
+    // Add user to online users map
+    onlineUsers.set(socket.userId, socket.id);
+
+    // Notify others that user is online
+    socket.broadcast.emit("user online", socket.userId);
+
+    // Automatically join personal room without waiting for 'setup' event
+    socket.join(socket.userId);
+    logger.info(`✅ User ${socket.userId} joined personal room automatically`);
+    socket.emit("setup complete", socket.userId);
 
     // Handle joining a chat room
     socket.on("join room", async (roomId) => {
@@ -54,6 +89,15 @@ export const initializeSocket = (httpServer: HTTPServer): Server => {
       );
 
       socket.emit("joined room", roomId);
+    });
+
+    // Handle typing indicator
+    socket.on("typing", (roomId) => {
+      socket.to(roomId).emit("typing", socket.userId);
+    });
+
+    socket.on("stop typing", (roomId) => {
+      socket.to(roomId).emit("stop typing", socket.userId);
     });
 
     // Handle sending a new message
@@ -94,7 +138,14 @@ export const initializeSocket = (httpServer: HTTPServer): Server => {
 
     // Handle disconnection
     socket.on("disconnect", (reason) => {
-      logger.info(`🔴 User disconnected: ${socket.id}, Reason: ${reason}`);
+      logger.info(`🔴 User disconnected: ${socket.userId} (socket id: ${socket.id}), Reason: ${reason}`);
+
+      // Remove user from online users map
+      if (socket.userId) {
+        onlineUsers.delete(socket.userId);
+        // Notify others that user is offline
+        socket.broadcast.emit("user offline", socket.userId);
+      }
     });
   });
 
