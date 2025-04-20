@@ -22,13 +22,15 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy built files from builder
+# Copy package files and node_modules from builder
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
+
+# Copy source and public directories from builder
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/public ./public
 
-# Create uploads directory
+# Create uploads directory and set permissions
 RUN mkdir -p /app/uploads && chown node:node /app/uploads
 VOLUME /app/uploads
 
@@ -38,8 +40,8 @@ ENV NODE_ENV=production
 # Switch to non-root user
 USER node
 
-# Expose port (adjust if needed)
-EXPOSE 3000
+# Expose port 8080
+EXPOSE 8080
 
 # Start the application
 CMD ["npm", "start"]
