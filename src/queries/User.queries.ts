@@ -29,6 +29,15 @@ export const getUser = async (email: string): Promise<IUser | null> => {
   }
 };
 
+export const getUserById = async (userId: string): Promise<IUser | null> => {
+  try {
+    return await User.findById(userId).select("-password").lean();
+  } catch (error) {
+    logger.error("❌ Error fetching user by ID: ", error);
+    return null;
+  }
+};
+
 export const updateUserById = async (
   userId: string,
   updateData: Partial<IUser>

@@ -1,6 +1,12 @@
 import { Response } from "express";
 import { AuthRequest, logger, sendResponse } from "../services";
-import { getMessages, saveMessage } from "../queries";
+import {
+  getMessages,
+  saveMessage,
+  deleteMessageById,
+  editMessageById,
+  searchMessages,
+} from "../queries";
 import { HttpResponseMessages, HttpStatusCodes } from "../constants";
 
 /**
@@ -43,11 +49,11 @@ export const createMessage = async (req: AuthRequest, res: Response) => {
 };
 
 /**
- * Get all messages
+ * Get all messages with pagination support
  */
 export const getMessageID = async (req: AuthRequest, res: Response) => {
   try {
-    const { chatId } = req.query;
+    const { chatId, limit = 20, skip = 0 } = req.query;
 
     if (!chatId) {
       logger.error("chatId is required");
@@ -74,6 +80,105 @@ export const getMessageID = async (req: AuthRequest, res: Response) => {
       statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
       message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
       error: error,
+    });
+  }
+};
+
+/**
+ * Delete a message (soft delete)
+ */
+export const deleteMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    const { messageId } = req.params;
+    if (!messageId) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "messageId is required",
+      });
+    }
+    await deleteMessageById(messageId);
+    logger.info(`Message ${messageId} deleted (soft)`);
+    sendResponse({
+      res,
+      statusCode: HttpStatusCodes.OK,
+      message: "Message deleted successfully",
+    });
+  } catch (error) {
+    logger.error("Error deleting message", error);
+    sendResponse({
+      res,
+      statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
+      error,
+    });
+  }
+};
+
+/**
+ * Edit a message
+ */
+export const editMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    const { messageId } = req.params;
+    const { content } = req.body;
+    if (!messageId || !content) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "messageId and content are required",
+      });
+    }
+    const updatedMessage = await editMessageById(messageId, content);
+    logger.info(`Message ${messageId} edited`);
+    sendResponse({
+      res,
+      statusCode: HttpStatusCodes.OK,
+      message: "Message updated successfully",
+      data: updatedMessage,
+    });
+  } catch (error) {
+    logger.error("Error editing message", error);
+    sendResponse({
+      res,
+      statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
+      error,
+    });
+  }
+};
+
+/**
+ * Search messages by content or sender
+ */
+export const searchMessagesController = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { chatId, query } = req.query;
+    if (!chatId || !query) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "chatId and query are required",
+      });
+    }
+    const results = await searchMessages(chatId as string, query as string);
+    logger.info("Messages search completed");
+    sendResponse({
+      res,
+      statusCode: HttpStatusCodes.OK,
+      message: "Search results",
+      data: results,
+    });
+  } catch (error) {
+    logger.error("Error searching messages", error);
+    sendResponse({
+      res,
+      statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
+      error,
     });
   }
 };
