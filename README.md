@@ -80,7 +80,7 @@ chat-node/
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/r3habb99/social-media-node-app.git
    cd chat-node
    ```
 
