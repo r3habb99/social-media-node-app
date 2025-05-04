@@ -6,6 +6,7 @@ import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+
 dotenv.config();
 
 // Importing custom modules
@@ -14,11 +15,12 @@ import { HOST, NODE_ENV, PORT } from "./config";
 import { logger, upload } from "./services";
 import { createServer } from "http";
 import { initializeSocket } from "./socket";
-
+import { setupSwagger } from "./swagger";
 // Importing routes
 import indexRoutes from "./routes/indexRoutes";
 
 const app = express();
+setupSwagger(app);
 const httpServer = createServer(app); // Create HTTP server
 
 // Security middleware
