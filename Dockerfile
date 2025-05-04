@@ -1,41 +1,64 @@
 # Stage 1: Build the application
-FROM node:20-alpine AS builder
+FROM node:20-alpine3.20@sha256:76bacbf09e7a2a999b5cf058c3d543216919f7dad9b00ae040cc9c39635fcc65 AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy package files first to leverage Docker cache
+COPY package*.json tsconfig.json ./
 
-# Install dependencies
-RUN npm install
+# Use npm ci for more reliable builds and update npm to fix vulnerabilities
+RUN apk update && \
+    apk upgrade && \
+    npm install -g npm@latest && \
+    npm ci
 
-# Copy source files
-COPY src ./src
-COPY public ./public
+# Copy only necessary source files
+COPY src/ ./src/
+COPY public/ ./public/
 
 # Build TypeScript
 RUN npm run build
 
 # Stage 2: Production image
-FROM node:20-alpine
+# Use the same specific version as the builder for consistency
+FROM node:20-alpine3.20@sha256:76bacbf09e7a2a999b5cf058c3d543216919f7dad9b00ae040cc9c39635fcc65
 
 WORKDIR /app
 
-# Copy package files and node_modules from builder
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
+# Copy package files
+COPY package*.json ./
 
-# Copy source and public directories from builder
-COPY --from=builder /app/src ./src
+# Install production dependencies only with npm ci and update system packages
+RUN apk update && \
+    apk upgrade && \
+    # Add curl for healthcheck (smaller than wget)
+    apk --no-cache add curl && \
+    # Update npm to fix vulnerabilities
+    npm install -g npm@latest && \
+    npm ci --only=production && \
+    # Create uploads directory with proper permissions
+    mkdir -p /app/uploads && \
+    chown node:node /app/uploads
+
+# Copy built JavaScript files from builder
+COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
 
-# Create uploads directory and set permissions
-RUN mkdir -p /app/uploads && chown node:node /app/uploads
+# Define a volume for uploads
 VOLUME /app/uploads
 
-# Set environment to production
-ENV NODE_ENV=production
+# Set environment variables
+ENV NODE_ENV=production \
+    PORT=8080 \
+    HOST=0.0.0.0
+
+# Add healthcheck using curl instead of wget
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+
+# Security: Add security-related options
+# Set npm log level to reduce output
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 
 # Switch to non-root user
 USER node
@@ -44,4 +67,4 @@ USER node
 EXPOSE 8080
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["node", "dist/server.js"]
