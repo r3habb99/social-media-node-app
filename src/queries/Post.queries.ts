@@ -129,3 +129,55 @@ export const pinPost = async (
     return;
   }
 };
+
+// Update a Post
+export const updatePost = async (
+  postId: string,
+  userId: string,
+  updateData: Partial<IPost>
+): Promise<IPost | null> => {
+  try {
+    // Find the post and verify ownership
+    const post = await Post.findOne({
+      _id: postId,
+      postedBy: userId,
+      isDeleted: false
+    });
+
+    if (!post) {
+      logger.error(`Post not found or user does not have permission to update`);
+      return null;
+    }
+
+    // Update only allowed fields
+    if (updateData.content !== undefined) {
+      post.content = updateData.content;
+    }
+
+    if (updateData.media !== undefined) {
+      post.media = updateData.media;
+    }
+
+    if (updateData.mediaType !== undefined) {
+      post.mediaType = updateData.mediaType;
+    }
+
+    if (updateData.visibility !== undefined) {
+      post.visibility = updateData.visibility;
+    }
+
+    // Save the updated post
+    await post.save();
+
+    // Return the updated post with populated fields
+    const updatedPost = await Post.findById(postId)
+      .populate("postedBy")
+      .populate("retweetData")
+      .populate("replyTo");
+
+    return updatedPost;
+  } catch (error) {
+    logger.error(`Error updating post: ${error}`);
+    return null;
+  }
+};

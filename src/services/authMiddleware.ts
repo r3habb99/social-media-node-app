@@ -12,6 +12,8 @@ dotenv.config();
 
 export interface AuthRequest extends Request {
   user?: JwtPayload;
+  files?: Express.Multer.File[] | { [fieldname: string]: Express.Multer.File[] };
+  file?: Express.Multer.File;
 }
 
 export const authMiddleware = async (

@@ -78,7 +78,7 @@ export const schemas = {
       confirmPassword: { type: "string", example: "NewPassword123!" },
     },
   },
-  
+
   // Chat related schemas
   CreateChat: {
     type: "object",
@@ -129,7 +129,7 @@ export const schemas = {
       chatId: { type: "string", example: "chatId123" },
     },
   },
-  
+
   // Message related schemas
   CreateMessage: {
     type: "object",
@@ -146,27 +146,59 @@ export const schemas = {
       content: { type: "string", example: "Updated message content" },
     },
   },
-  
+
   // Post related schemas
   Post: {
     type: "object",
     properties: {
-      content: { type: "string", example: "This is a post" },
+      content: {
+        type: "string",
+        example: "This is a post",
+        description: "Post content text (optional if media is provided)"
+      },
       media: {
         type: "array",
         items: { type: "string", format: "uri" },
         example: ["http://example.com/image.jpg"],
+        description: "Array of media URLs or uploaded files"
       },
       visibility: {
         type: "string",
         enum: ["public", "private", "followers"],
         example: "public",
+        description: "Post visibility setting"
       },
-      isReply: { type: "boolean", example: false },
-      search: { type: "string", example: "search term" },
+      isReply: {
+        type: "boolean",
+        example: false,
+        description: "Whether this post is a reply to another post"
+      }
     },
   },
-  
+
+  UpdatePost: {
+    type: "object",
+    properties: {
+      content: {
+        type: "string",
+        example: "This is an updated post",
+        description: "Updated post content text (optional)"
+      },
+      media: {
+        type: "array",
+        items: { type: "string", format: "uri" },
+        example: ["http://example.com/new-image.jpg"],
+        description: "Updated array of media URLs (optional)"
+      },
+      visibility: {
+        type: "string",
+        enum: ["public", "private", "followers"],
+        example: "private",
+        description: "Updated post visibility setting (optional)"
+      }
+    },
+  },
+
   // Notification related schemas
   Notification: {
     type: "object",

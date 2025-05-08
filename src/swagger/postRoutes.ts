@@ -35,14 +35,39 @@ export const postRoutes = {
       requestBody: {
         required: true,
         content: {
+          "multipart/form-data": {
+            schema: {
+              type: "object",
+              properties: {
+                content: {
+                  type: "string",
+                  description: "Post content text (optional if media is provided)",
+                  example: "This is a post with an image"
+                },
+                media: {
+                  type: "array",
+                  items: {
+                    type: "string",
+                    format: "binary"
+                  },
+                  description: "Media files to upload (images/videos)"
+                },
+                visibility: {
+                  type: "string",
+                  enum: ["public", "private", "followers"],
+                  default: "public",
+                  description: "Post visibility setting"
+                }
+              }
+            }
+          },
           "application/json": {
             schema: { $ref: "#/components/schemas/Post" },
             example: {
               content: "This is a post",
               media: ["http://example.com/image.jpg"],
               visibility: "public",
-              isReply: false,
-              search: "search term",
+              isReply: false
             },
           },
         },
@@ -70,6 +95,63 @@ export const postRoutes = {
       responses: {
         "200": { description: "Post retrieved successfully" },
         "404": { description: "Post not found" },
+      },
+    },
+    put: {
+      tags: ["Post"],
+      summary: "Update a post",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+          description: "ID of the post to update",
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "multipart/form-data": {
+            schema: {
+              type: "object",
+              properties: {
+                content: {
+                  type: "string",
+                  description: "Updated post content text (optional)",
+                  example: "This is an updated post with a new image"
+                },
+                media: {
+                  type: "array",
+                  items: {
+                    type: "string",
+                    format: "binary"
+                  },
+                  description: "New media files to upload (optional)"
+                },
+                visibility: {
+                  type: "string",
+                  enum: ["public", "private", "followers"],
+                  description: "Updated post visibility setting (optional)"
+                }
+              }
+            }
+          },
+          "application/json": {
+            schema: { $ref: "#/components/schemas/UpdatePost" },
+            example: {
+              content: "This is an updated post",
+              media: ["http://example.com/new-image.jpg"],
+              visibility: "private"
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Post updated successfully" },
+        "400": { description: "Bad request" },
+        "404": { description: "Post not found or user doesn't have permission to update it" },
       },
     },
     delete: {

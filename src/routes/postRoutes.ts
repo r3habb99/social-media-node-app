@@ -1,5 +1,6 @@
 import express from "express";
-import { authMiddleware, upload, validate } from "../services";
+import { authMiddleware, upload } from "../services";
+import { validateRequest } from "../middlewares/validation.middleware";
 import {
   handleCreatePost,
   handleDeletePost,
@@ -7,14 +8,16 @@ import {
   handleGetPosts,
   handleLikePost,
   handleRetweetPost,
+  handleUpdatePost,
 } from "../controllers";
-import { postSchema } from "../validations/postSchema";
+import { postSchema, updatePostSchema } from "../validations/postSchema";
 
 const router = express.Router();
 
 router.get("/", authMiddleware, handleGetPosts);
 router.get("/:id", authMiddleware, handleGetPostById);
-router.post("/", authMiddleware, validate(postSchema), handleCreatePost); //upload.array("media", 1)
+router.post("/", authMiddleware, upload.array("media", 5), validateRequest(postSchema), handleCreatePost);
+router.put("/:id", authMiddleware, upload.array("media", 5), validateRequest(updatePostSchema), handleUpdatePost);
 router.put("/:id/like", authMiddleware, handleLikePost);
 router.post("/:id/retweet", authMiddleware, handleRetweetPost);
 router.delete("/:id", authMiddleware, handleDeletePost);
