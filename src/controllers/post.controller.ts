@@ -11,6 +11,7 @@ import {
 } from "../queries";
 import { HttpResponseMessages, HttpStatusCodes } from "../constants";
 import { IPost } from "../interfaces";
+import { getFullMediaUrl } from "../utils/mediaUrl";
 
 // Get all posts
 export const handleGetPosts = async (req: AuthRequest, res: Response) => {
@@ -102,7 +103,8 @@ export const handleCreatePost = async (req: AuthRequest, res: Response) => {
       files.forEach(file => {
         // Check if the file is in the post-media directory or others directory
         const directory = file.destination.includes('post-media') ? 'post-media' : 'others';
-        const mediaUrl = `/uploads/${directory}/${file.filename}`;
+        const relativePath = `/uploads/${directory}/${file.filename}`;
+        const mediaUrl = getFullMediaUrl(relativePath);
         mediaUrls.push(mediaUrl);
         logger.info(`Added media URL: ${mediaUrl} for file: ${file.filename}`);
       });
@@ -248,7 +250,8 @@ export const handleUpdatePost = async (req: AuthRequest, res: Response) => {
       files.forEach(file => {
         // Check if the file is in the post-media directory or others directory
         const directory = file.destination.includes('post-media') ? 'post-media' : 'others';
-        const mediaUrl = `/uploads/${directory}/${file.filename}`;
+        const relativePath = `/uploads/${directory}/${file.filename}`;
+        const mediaUrl = getFullMediaUrl(relativePath);
         mediaUrls.push(mediaUrl);
         logger.info(`Added media URL: ${mediaUrl} for file: ${file.filename}`);
       });

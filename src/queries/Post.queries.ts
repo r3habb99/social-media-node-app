@@ -2,6 +2,41 @@ import mongoose from "mongoose";
 import { IPost } from "../interfaces";
 import { Post } from "../entities";
 import { logger } from "../services";
+import { getFullMediaUrl } from "../utils/mediaUrl";
+
+/**
+ * Helper function to transform media URLs in a post to full URLs
+ */
+const transformPostMediaUrls = (post: IPost | null): IPost | null => {
+  if (!post) return null;
+
+  // Create a new object to avoid modifying the original
+  const postObj = post.toObject();
+
+  // Transform media URLs if they exist
+  if (postObj.media && Array.isArray(postObj.media)) {
+    postObj.media = postObj.media.map((url: string) => getFullMediaUrl(url));
+  }
+
+  // Transform media URLs in retweetData if it exists
+  if (postObj.retweetData && postObj.retweetData.media && Array.isArray(postObj.retweetData.media)) {
+    postObj.retweetData.media = postObj.retweetData.media.map((url: string) => getFullMediaUrl(url));
+  }
+
+  // Transform media URLs in replyTo if it exists
+  if (postObj.replyTo && postObj.replyTo.media && Array.isArray(postObj.replyTo.media)) {
+    postObj.replyTo.media = postObj.replyTo.media.map((url: string) => getFullMediaUrl(url));
+  }
+
+  return postObj as unknown as IPost;
+};
+
+/**
+ * Helper function to transform media URLs in an array of posts
+ */
+const transformPostsMediaUrls = (posts: IPost[]): IPost[] => {
+  return posts.map(post => transformPostMediaUrls(post)).filter(Boolean) as IPost[];
+};
 
 // Get Posts with Filters
 export const getPosts = async (filter: object): Promise<IPost[]> => {
@@ -12,7 +47,9 @@ export const getPosts = async (filter: object): Promise<IPost[]> => {
       .populate("replyTo")
       .sort({ createdAt: -1 })
       .exec();
-    return posts || []; // Ensure an empty array is returned if no posts are found
+
+    // Transform media URLs to full URLs
+    return transformPostsMediaUrls(posts || []);
   } catch (error) {
     logger.error(`Error fetching posts: ${error}`);
     return []; // Return empty array in case of error
@@ -27,7 +64,9 @@ export const getPostById = async (postId: string): Promise<IPost | null> => {
       .populate("retweetData")
       .populate("replyTo")
       .exec();
-    return post || null; // Ensure null is returned if post is not found
+
+    // Transform media URLs to full URLs
+    return transformPostMediaUrls(post);
   } catch (error) {
     logger.error(`Error fetching post by ID: ${error}`);
     return null; // Return null in case of error
@@ -60,9 +99,13 @@ export const toggleLikePost = async (
       postId,
       { [option]: { likes: new mongoose.Types.ObjectId(userId) } }, // Add/remove the userId
       { new: true }
-    ).populate("postedBy"); // Populate postedBy with user data for username
+    )
+    .populate("postedBy") // Populate postedBy with user data for username
+    .populate("retweetData")
+    .populate("replyTo");
 
-    return updatedPost;
+    // Transform media URLs to full URLs
+    return transformPostMediaUrls(updatedPost);
   } catch (error) {
     logger.error(`Error toggling like on post: ${error}`);
     return null;
@@ -81,7 +124,8 @@ export const retweetPost = async (
     });
 
     if (deletedPost) {
-      return { post: deletedPost, deleted: true };
+      // Transform media URLs in the deleted post
+      return { post: transformPostMediaUrls(deletedPost), deleted: true };
     }
 
     const repost = await Post.create({
@@ -90,9 +134,12 @@ export const retweetPost = async (
       retweetUsers: userId,
     });
 
+    // Populate the repost with related data
     await repost.populate("postedBy"); // Populate postedBy to include user data
+    await repost.populate("retweetData");
 
-    return { post: repost, deleted: false };
+    // Transform media URLs in the repost
+    return { post: transformPostMediaUrls(repost), deleted: false };
   } catch (error) {
     logger.error(`Error retweeting post: ${error}`);
     return { post: null }; // Return null if there is an error
@@ -175,7 +222,8 @@ export const updatePost = async (
       .populate("retweetData")
       .populate("replyTo");
 
-    return updatedPost;
+    // Transform media URLs to full URLs
+    return transformPostMediaUrls(updatedPost);
   } catch (error) {
     logger.error(`Error updating post: ${error}`);
     return null;
