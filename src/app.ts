@@ -12,7 +12,7 @@ dotenv.config();
 // Importing custom modules
 import { connectDB } from "./db";
 import { HOST, NODE_ENV, PORT } from "./config";
-import { logger, upload } from "./services";
+import { logger } from "./services";
 import { createServer } from "http";
 import { initializeSocket } from "./socket";
 import { setupSwagger } from "./swagger";
@@ -35,7 +35,7 @@ app.use(helmet());
 // });
 // app.use(limiter);
 
-app.use(upload.any());
+// Removed global upload.any() middleware to avoid conflicts with route-specific upload middleware
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 

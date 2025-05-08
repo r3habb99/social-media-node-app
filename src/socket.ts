@@ -123,7 +123,9 @@ export const initializeSocket = (httpServer: HTTPServer): Server => {
     // Handle sending a new message
     socket.on("new message", async (message) => {
       try {
-        const chatRoomId = message.chat?._id || message.chat;
+        logger.info("New message arrived");
+        const chatRoomId =
+          message.chat?._id || message.chat?.id || message.chat;
         if (!chatRoomId) {
           throw new Error("Invalid chat room ID");
         }

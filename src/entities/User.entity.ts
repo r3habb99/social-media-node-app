@@ -32,7 +32,7 @@ const UserSchema = new Schema<IUser>(
     },
     profilePic: {
       type: String,
-      default: "./public/assets/profilePic.jpeg",
+      default: "/public/assets/profilePic.jpeg", // Updated path to be accessible from the frontend
     },
     coverPhoto: {
       type: String,

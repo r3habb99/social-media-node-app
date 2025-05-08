@@ -6,13 +6,29 @@ import { logger } from "./logger";
 // Define base upload directory
 const BASE_UPLOAD_DIR = path.join(__dirname, "../../uploads");
 
+// Ensure base upload directory exists
 if (!fs.existsSync(BASE_UPLOAD_DIR)) {
+  logger.info(`Creating base upload directory: ${BASE_UPLOAD_DIR}`);
   fs.mkdirSync(BASE_UPLOAD_DIR, { recursive: true });
+}
+
+// Create subdirectories if they don't exist
+const profilePicsDir = path.join(BASE_UPLOAD_DIR, "profile-pictures");
+const coverPhotosDir = path.join(BASE_UPLOAD_DIR, "cover-photos");
+
+if (!fs.existsSync(profilePicsDir)) {
+  logger.info(`Creating profile pictures directory: ${profilePicsDir}`);
+  fs.mkdirSync(profilePicsDir, { recursive: true });
+}
+
+if (!fs.existsSync(coverPhotosDir)) {
+  logger.info(`Creating cover photos directory: ${coverPhotosDir}`);
+  fs.mkdirSync(coverPhotosDir, { recursive: true });
 }
 
 // Configure Multer storage dynamically
 const storage = multer.diskStorage({
-  destination: (req, _file, cb) => {
+  destination: (req, file, cb) => {
     let uploadFolder = "others"; // Default folder
 
     if (req.url.includes("profile-picture")) {
@@ -22,7 +38,14 @@ const storage = multer.diskStorage({
     }
 
     const finalPath = path.join(BASE_UPLOAD_DIR, uploadFolder);
+
+    // Log the destination path for debugging
+    logger.info(`Upload destination path: ${finalPath}`);
+    logger.info(`Request URL: ${req.url}`);
+    logger.info(`File mimetype: ${file.mimetype}`);
+
     if (!fs.existsSync(finalPath)) {
+      logger.info(`Creating directory: ${finalPath}`);
       fs.mkdirSync(finalPath, { recursive: true });
     }
 
@@ -31,6 +54,7 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const uniqueFilename = `${Date.now()}-${file.originalname}`;
 
+    // Store original and uploaded filenames in request body
     req.body.originalFileName = file.originalname;
     req.body.uploadedFileName = uniqueFilename;
 

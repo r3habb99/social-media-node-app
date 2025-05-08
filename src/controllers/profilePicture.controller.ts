@@ -6,6 +6,9 @@ import { Response } from "express";
 // Upload Profile Picture
 export const uploadProfilePic = async (req: AuthRequest, res: Response) => {
   try {
+    logger.info("Starting profile picture upload process");
+
+    // Check if file exists in the request
     if (!req.file) {
       logger.error("❌ No file uploaded");
       return sendResponse({
@@ -15,6 +18,17 @@ export const uploadProfilePic = async (req: AuthRequest, res: Response) => {
         data: "No file uploaded!",
       });
     }
+
+    // Log file details for debugging
+    logger.info(
+      `File details: ${JSON.stringify({
+        filename: req.file.filename,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path,
+      })}`
+    );
 
     const userId = req.user?.id;
     if (!userId) {
@@ -27,11 +41,15 @@ export const uploadProfilePic = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Construct the URL path that will be used to access the image
     const imageUrl = `/uploads/profile-pictures/${req.file.filename}`;
+    logger.info(`Image URL to be saved: ${imageUrl}`);
+
+    // Update the user's profile picture in the database
     const user = await updateUserImage(userId, "profilePic", imageUrl);
 
     if (!user) {
-      logger.error("❌ User not found");
+      logger.error(`❌ User not found with ID: ${userId}`);
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -40,7 +58,7 @@ export const uploadProfilePic = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    logger.info("✅ Profile Picture Updated Successfully");
+    logger.info(`✅ Profile Picture Updated Successfully for user: ${userId}`);
     return sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,
@@ -48,6 +66,7 @@ export const uploadProfilePic = async (req: AuthRequest, res: Response) => {
       data: { profilePic: imageUrl, user },
     });
   } catch (error) {
+    logger.error("❌ Error in uploadProfilePic:", error);
     return sendResponse({
       res,
       statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -103,6 +122,9 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
 // Upload Cover Photo
 export const uploadCoverPhoto = async (req: AuthRequest, res: Response) => {
   try {
+    logger.info("Starting cover photo upload process");
+
+    // Check if file exists in the request
     if (!req.file) {
       logger.error("❌ No file uploaded");
       return sendResponse({
@@ -112,6 +134,17 @@ export const uploadCoverPhoto = async (req: AuthRequest, res: Response) => {
         data: "No file uploaded!",
       });
     }
+
+    // Log file details for debugging
+    logger.info(
+      `File details: ${JSON.stringify({
+        filename: req.file.filename,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path,
+      })}`
+    );
 
     const userId = req.user?.id; // Get user ID from authenticated request
     if (!userId) {
@@ -124,10 +157,15 @@ export const uploadCoverPhoto = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Construct the URL path that will be used to access the image
     const coverPhotoUrl = `/uploads/cover-photos/${req.file.filename}`;
+    logger.info(`Cover photo URL to be saved: ${coverPhotoUrl}`);
+
+    // Update the user's cover photo in the database
     const user = await updateUserImage(userId, "coverPhoto", coverPhotoUrl);
+
     if (!user) {
-      logger.error("❌ User not found");
+      logger.error(`❌ User not found with ID: ${userId}`);
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -136,7 +174,7 @@ export const uploadCoverPhoto = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    logger.info("✅ Cover Photo Updated Successfully");
+    logger.info(`✅ Cover Photo Updated Successfully for user: ${userId}`);
     return sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,
