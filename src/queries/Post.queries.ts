@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { IPost } from "../interfaces";
-import { Post } from "../entities";
+import { Post, User } from "../entities";
 import { logger } from "../services";
 import { getFullMediaUrl } from "../utils/mediaUrl";
 
@@ -43,7 +43,13 @@ export const getPosts = async (filter: object): Promise<IPost[]> => {
   try {
     const posts = await Post.find({ isDeleted: false, ...filter })
       .populate("postedBy") // Populate the postedBy field (user data)
-      .populate("retweetData")
+      .populate({
+        path: "retweetData",
+        populate: [
+          { path: "postedBy" },
+          { path: "replyTo" }
+        ]
+      })
       .populate("replyTo")
       .sort({ createdAt: -1 })
       .exec();
@@ -61,7 +67,13 @@ export const getPostById = async (postId: string): Promise<IPost | null> => {
   try {
     const post = await Post.findOne({ _id: postId, isDeleted: false })
       .populate("postedBy")
-      .populate("retweetData")
+      .populate({
+        path: "retweetData",
+        populate: [
+          { path: "postedBy" },
+          { path: "replyTo" }
+        ]
+      })
       .populate("replyTo")
       .exec();
 
@@ -95,6 +107,7 @@ export const toggleLikePost = async (
     const isLiked = post.likes.includes(new mongoose.Types.ObjectId(userId));
     const option = isLiked ? "$pull" : "$addToSet"; // Toggle like using $pull and $addToSet
 
+    // Update the post's likes array
     const updatedPost = await Post.findByIdAndUpdate(
       postId,
       { [option]: { likes: new mongoose.Types.ObjectId(userId) } }, // Add/remove the userId
@@ -103,6 +116,12 @@ export const toggleLikePost = async (
     .populate("postedBy") // Populate postedBy with user data for username
     .populate("retweetData")
     .populate("replyTo");
+
+    // Also update the user's likes array to maintain consistency
+    await User.findByIdAndUpdate(
+      userId,
+      { [option]: { likes: new mongoose.Types.ObjectId(postId) } } // Add/remove the postId
+    );
 
     // Transform media URLs to full URLs
     return transformPostMediaUrls(updatedPost);
@@ -124,19 +143,59 @@ export const retweetPost = async (
     });
 
     if (deletedPost) {
+      // Also remove this post from user's retweets array
+      await User.findByIdAndUpdate(
+        userId,
+        { $pull: { retweets: new mongoose.Types.ObjectId(postId) } }
+      );
+
       // Transform media URLs in the deleted post
       return { post: transformPostMediaUrls(deletedPost), deleted: true };
     }
 
+    // Update the original post to add this user to retweetUsers
+    await Post.findByIdAndUpdate(
+      postId,
+      { $addToSet: { retweetUsers: new mongoose.Types.ObjectId(userId) } }
+    );
+
+    // Update the user to add this post to their retweets array
+    await User.findByIdAndUpdate(
+      userId,
+      { $addToSet: { retweets: new mongoose.Types.ObjectId(postId) } }
+    );
+
+    // Get the original post to copy its content and media
+    const originalPost = await Post.findById(postId);
+    if (!originalPost) {
+      logger.error(`Original post not found: ${postId}`);
+      return { post: null };
+    }
+
+    // Create the retweet with content and media from the original post
     const repost = await Post.create({
       postedBy: userId,
       retweetData: postId,
-      retweetUsers: userId,
+      content: originalPost.content,  // Copy the content
+      media: originalPost.media,      // Copy the media URLs
+      mediaType: originalPost.mediaType, // Copy the media type
+      visibility: originalPost.visibility // Copy the visibility setting
     });
 
     // Populate the repost with related data
-    await repost.populate("postedBy"); // Populate postedBy to include user data
-    await repost.populate("retweetData");
+    await repost.populate({
+      path: "postedBy"
+    });
+
+    // Populate retweetData and its nested fields
+    await repost.populate({
+      path: "retweetData",
+      populate: [
+        { path: "postedBy" },
+        { path: "replyTo" },
+        { path: "retweetUsers" }
+      ]
+    });
 
     // Transform media URLs in the repost
     return { post: transformPostMediaUrls(repost), deleted: false };
