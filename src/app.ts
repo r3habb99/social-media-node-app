@@ -64,9 +64,16 @@ app.use(
 
 app.use(morgan("dev"));
 
-// Serve static images
-app.use("/public", express.static(path.join(__dirname, "public")));
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+// Serve static images with CORS headers
+app.use("/public", (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, "public")));
+
+app.use("/uploads", (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, "../uploads")));
 
 // Request logging middleware
 app.use((req: Request, _res: Response, next: NextFunction) => {
