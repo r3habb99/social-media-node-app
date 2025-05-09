@@ -176,6 +176,33 @@ export const schemas = {
     },
   },
 
+  // Pagination related schemas
+  PostPagination: {
+    type: "object",
+    properties: {
+      posts: {
+        type: "array",
+        items: { $ref: "#/components/schemas/Post" },
+        description: "Array of posts"
+      },
+      pagination: {
+        type: "object",
+        properties: {
+          next_max_id: {
+            type: "string",
+            example: "60d21b4667d0d8992e610c85",
+            description: "ID to use as max_id in the next request to get older posts"
+          },
+          has_more: {
+            type: "boolean",
+            example: true,
+            description: "Whether there are more posts to fetch"
+          }
+        }
+      }
+    }
+  },
+
   UpdatePost: {
     type: "object",
     properties: {

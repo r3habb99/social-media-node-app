@@ -38,10 +38,42 @@ const transformPostsMediaUrls = (posts: IPost[]): IPost[] => {
   return posts.map(post => transformPostMediaUrls(post)).filter(Boolean) as IPost[];
 };
 
-// Get Posts with Filters
-export const getPosts = async (filter: object): Promise<IPost[]> => {
+// Get Posts with Filters and Pagination
+export const getPosts = async (
+  filter: object,
+  paginationOptions?: {
+    max_id?: string;
+    since_id?: string;
+    limit?: number;
+  }
+): Promise<{
+  posts: IPost[];
+  pagination: {
+    next_max_id?: string;
+    has_more: boolean;
+  };
+}> => {
   try {
-    const posts = await Post.find({ isDeleted: false, ...filter })
+    const limit = paginationOptions?.limit || 10; // Default limit is 10
+    let query: any = { isDeleted: false, ...filter };
+
+    // Apply cursor-based pagination filters
+    if (paginationOptions?.max_id) {
+      // Get posts older than max_id (going backwards in time)
+      const maxIdPost = await Post.findById(paginationOptions.max_id);
+      if (maxIdPost) {
+        query.createdAt = { $lt: maxIdPost.createdAt };
+      }
+    } else if (paginationOptions?.since_id) {
+      // Get posts newer than since_id (going forward in time)
+      const sinceIdPost = await Post.findById(paginationOptions.since_id);
+      if (sinceIdPost) {
+        query.createdAt = { $gt: sinceIdPost.createdAt };
+      }
+    }
+
+    // Fetch one more post than requested to determine if there are more posts
+    const posts = await Post.find(query)
       .populate("postedBy") // Populate the postedBy field (user data)
       .populate({
         path: "retweetData",
@@ -52,13 +84,33 @@ export const getPosts = async (filter: object): Promise<IPost[]> => {
       })
       .populate("replyTo")
       .sort({ createdAt: -1 })
+      .limit(limit + 1) // Fetch one extra to check if there are more
       .exec();
 
+    // Check if there are more posts
+    const hasMore = posts.length > limit;
+    // Remove the extra post if there are more
+    const paginatedPosts = hasMore ? posts.slice(0, limit) : posts;
+
+    // Get the next_max_id (the ID of the last post in the current set)
+    const nextMaxId = paginatedPosts.length > 0 ? paginatedPosts[paginatedPosts.length - 1]._id?.toString() : undefined;
+
     // Transform media URLs to full URLs
-    return transformPostsMediaUrls(posts || []);
+    return {
+      posts: transformPostsMediaUrls(paginatedPosts || []),
+      pagination: {
+        next_max_id: hasMore ? nextMaxId : undefined,
+        has_more: hasMore
+      }
+    };
   } catch (error) {
     logger.error(`Error fetching posts: ${error}`);
-    return []; // Return empty array in case of error
+    return {
+      posts: [],
+      pagination: {
+        has_more: false
+      }
+    }; // Return empty array in case of error
   }
 };
 

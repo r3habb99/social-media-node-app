@@ -22,9 +22,44 @@ export const postRoutes = {
           schema: { type: "string" },
           description: "Search term for posts",
         },
+        {
+          name: "max_id",
+          in: "query",
+          required: false,
+          schema: { type: "string" },
+          description: "Get posts older than this ID (cursor-based pagination)",
+        },
+        {
+          name: "since_id",
+          in: "query",
+          required: false,
+          schema: { type: "string" },
+          description: "Get posts newer than this ID (cursor-based pagination)",
+        },
+        {
+          name: "limit",
+          in: "query",
+          required: false,
+          schema: { type: "integer", default: 10, minimum: 1, maximum: 100 },
+          description: "Number of posts to return (default: 10, max: 100)",
+        },
       ],
       responses: {
-        "200": { description: "List of posts" },
+        "200": {
+          description: "List of posts with pagination metadata",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  status: { type: "string", example: "success" },
+                  message: { type: "string", example: "Success" },
+                  data: { $ref: "#/components/schemas/PostPagination" }
+                }
+              }
+            }
+          }
+        },
         "500": { description: "Internal server error" },
       },
     },

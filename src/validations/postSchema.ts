@@ -29,6 +29,22 @@ export const postSchema = Joi.object({
 
   search: Joi.string().optional(),
 
+  // Pagination parameters
+  max_id: Joi.string().regex(/^[0-9a-fA-F]{24}$/).optional().messages({
+    "string.pattern.base": "max_id must be a valid MongoDB ObjectId",
+  }),
+
+  since_id: Joi.string().regex(/^[0-9a-fA-F]{24}$/).optional().messages({
+    "string.pattern.base": "since_id must be a valid MongoDB ObjectId",
+  }),
+
+  limit: Joi.number().integer().min(1).max(100).optional().default(10).messages({
+    "number.base": "limit must be a number",
+    "number.integer": "limit must be an integer",
+    "number.min": "limit must be at least 1",
+    "number.max": "limit cannot exceed 100",
+  }),
+
   // Fields added by multer middleware
   originalFileName: Joi.string().optional(),
   uploadedFileName: Joi.string().optional(),

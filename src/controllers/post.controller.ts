@@ -13,11 +13,21 @@ import { HttpResponseMessages, HttpStatusCodes } from "../constants";
 import { IPost } from "../interfaces";
 import { getFullMediaUrl } from "../utils/mediaUrl";
 
-// Get all posts
+// Get all posts with pagination
 export const handleGetPosts = async (req: AuthRequest, res: Response) => {
   try {
+    // Extract pagination parameters
+    const { max_id, since_id, limit } = req.query;
+
+    // Create search object from remaining query parameters
     let searchObj: any = { ...req.query };
 
+    // Remove pagination parameters from search object
+    delete searchObj.max_id;
+    delete searchObj.since_id;
+    delete searchObj.limit;
+
+    // Process special filters
     if (typeof searchObj.isReply === "string") {
       searchObj.replyTo = { $exists: searchObj.isReply === "true" };
       delete searchObj.isReply;
@@ -28,13 +38,25 @@ export const handleGetPosts = async (req: AuthRequest, res: Response) => {
       delete searchObj.search;
     }
 
-    const posts = await getPosts(searchObj);
-    logger.info("Posts fetched successfully");
+    // Create pagination options
+    const paginationOptions = {
+      max_id: max_id as string | undefined,
+      since_id: since_id as string | undefined,
+      limit: limit ? parseInt(limit as string, 10) : undefined
+    };
+
+    // Get posts with pagination
+    const result = await getPosts(searchObj, paginationOptions);
+    logger.info("Posts fetched successfully with pagination");
+
     return sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,
       message: HttpResponseMessages.SUCCESS,
-      data: posts,
+      data: {
+        posts: result.posts,
+        pagination: result.pagination
+      },
     });
   } catch (error) {
     logger.error("Error fetching posts", error);
