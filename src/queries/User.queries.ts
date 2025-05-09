@@ -1,6 +1,7 @@
 import { User } from "../entities";
 import { IUser } from "../interfaces";
 import { logger } from "../services";
+import { transformUserMediaUrls, transformUsersMediaUrls } from "../utils/userMediaUrl";
 
 export const createUser = async (userData: Partial<IUser>): Promise<IUser> => {
   try {
@@ -13,7 +14,8 @@ export const createUser = async (userData: Partial<IUser>): Promise<IUser> => {
 };
 export const getAllUsers = async () => {
   try {
-    return await User.find();
+    const users = await User.find();
+    return transformUsersMediaUrls(users);
   } catch (error) {
     logger.error("❌ Error in fetching users: ", error);
     return error;
@@ -22,7 +24,8 @@ export const getAllUsers = async () => {
 
 export const getUser = async (email: string): Promise<IUser | null> => {
   try {
-    return await User.findOne({ email }).lean();
+    const user = await User.findOne({ email });
+    return transformUserMediaUrls(user);
   } catch (error) {
     logger.error("❌ Error fetching user by email: ", error);
     return null;
@@ -31,7 +34,8 @@ export const getUser = async (email: string): Promise<IUser | null> => {
 
 export const getUserById = async (userId: string): Promise<IUser | null> => {
   try {
-    return await User.findById(userId).select("-password").lean();
+    const user = await User.findById(userId).select("-password");
+    return transformUserMediaUrls(user);
   } catch (error) {
     logger.error("❌ Error fetching user by ID: ", error);
     return null;
@@ -43,7 +47,8 @@ export const updateUserById = async (
   updateData: Partial<IUser>
 ): Promise<IUser | null> => {
   try {
-    return await User.findByIdAndUpdate(userId, updateData, { new: true });
+    const user = await User.findByIdAndUpdate(userId, updateData, { new: true });
+    return transformUserMediaUrls(user);
   } catch (error) {
     logger.error("❌ Error updating user:", error);
     throw error;
@@ -76,7 +81,8 @@ export const searchUser = async (query: string) => {
     // Query the User collection with the built search query
     const users = await User.find(searchQuery);
 
-    return users; // Return the users matching the search query
+    // Transform user media URLs before returning
+    return transformUsersMediaUrls(users);
   } catch (error) {
     logger.error("Error searching users in database", error);
     return []; // Return an empty array in case of error

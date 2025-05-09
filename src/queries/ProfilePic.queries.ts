@@ -1,5 +1,6 @@
 import { User } from "../entities";
 import { logger } from "../services";
+import { transformUserMediaUrls } from "../utils/userMediaUrl";
 
 // Update Profile Picture or Cover Photo
 export const updateUserImage = async (
@@ -34,7 +35,7 @@ export const updateUserImage = async (
 
     if (updatedUser) {
       logger.info(`Successfully updated ${field} for user ${userId}`);
-      return updatedUser;
+      return transformUserMediaUrls(updatedUser);
     } else {
       logger.error(`Failed to update ${field} for user ${userId}`);
       return null;
@@ -63,7 +64,7 @@ export const getUserById = async (userId: string) => {
     }
 
     logger.info(`Successfully retrieved user profile for ID: ${userId}`);
-    return user;
+    return transformUserMediaUrls(user);
   } catch (error) {
     logger.error(`Error fetching user by id ${userId}:`, error);
     return null;
@@ -72,7 +73,8 @@ export const getUserById = async (userId: string) => {
 // Get User Profile (excluding password)
 export const getUserForPassword = async (userId: string) => {
   try {
-    return await User.findById(userId).select("+password");
+    const user = await User.findById(userId).select("+password");
+    return transformUserMediaUrls(user);
   } catch (error) {
     logger.error("Error fetching user by id", error);
     return null;

@@ -39,30 +39,21 @@ app.use(helmet());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.use(
-  cors()
-  //   {
-  //   origin: (origin, callback) => {
-  //     // Allow any origin or check for a specific one
-  //     const allowedOrigins = [
-  //       "http://localhost:5173",
-  //       "http://localhost:3000",
-  //       "http://localhost:8080",
-  //       "http://192.168.0.88:8080",
-  //     ];
-  //     if (!origin || allowedOrigins.indexOf(origin) === -1) {
-  //       callback(new Error("Not allowed by CORS"));
-  //     } else {
-  //       callback(null, true);
-  //     }
-  //   },
-  //   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  //   allowedHeaders: ["Content-Type", "Authorization"],
-  //   credentials: true,
-  // }
-);
+// Configure CORS for all routes
+app.use(cors({
+  origin: '*', // Allow all origins
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  exposedHeaders: ['Content-Disposition'] // For file downloads
+}));
 
 app.use(morgan("dev"));
+
+// Handle OPTIONS requests for CORS preflight
+app.options('*', (req, res) => {
+  res.status(200).end();
+});
 
 // Serve static images with CORS headers
 app.use("/public", (req, res, next) => {
@@ -71,7 +62,11 @@ app.use("/public", (req, res, next) => {
 }, express.static(path.join(__dirname, "public")));
 
 app.use("/uploads", (req, res, next) => {
+  // Set comprehensive CORS headers
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Authorization');
   next();
 }, express.static(path.join(__dirname, "../uploads")));
 
@@ -85,6 +80,26 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 // Health check endpoint
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "OK" });
+});
+
+// Add a redirect for /api/uploads to /uploads
+app.use("/api/uploads", (req, res) => {
+  const redirectUrl = `/uploads${req.url}`;
+  logger.info(`Redirecting from ${req.originalUrl} to ${redirectUrl}`);
+  res.redirect(redirectUrl);
+});
+
+// Special handling for profile pictures and cover photos
+app.get("/api/uploads/profile-pictures/:filename", (req, res) => {
+  const filePath = path.join(__dirname, "../uploads/profile-pictures", req.params.filename);
+  logger.info(`Serving profile picture directly from: ${filePath}`);
+  res.sendFile(filePath);
+});
+
+app.get("/api/uploads/cover-photos/:filename", (req, res) => {
+  const filePath = path.join(__dirname, "../uploads/cover-photos", req.params.filename);
+  logger.info(`Serving cover photo directly from: ${filePath}`);
+  res.sendFile(filePath);
 });
 
 app.use("/api", indexRoutes);

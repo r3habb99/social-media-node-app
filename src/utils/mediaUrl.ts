@@ -17,12 +17,17 @@ export const getFullMediaUrl = (relativePath: string): string => {
   const port = PORT || '8080';
 
   // For production, you might not want to include the port in the URL
-  const baseUrl = process.env.NODE_ENV === 'production' 
+  const baseUrl = process.env.NODE_ENV === 'production'
     ? `${protocol}://${host}`
     : `${protocol}://${host}:${port}`;
 
-  // Ensure the relativePath starts with a slash
-  const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  // Ensure the relativePath starts with a slash and doesn't include /api
+  let path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+
+  // Remove /api prefix if it exists
+  if (path.startsWith('/api/')) {
+    path = path.substring(4); // Remove the /api prefix
+  }
 
   return `${baseUrl}${path}`;
 };
