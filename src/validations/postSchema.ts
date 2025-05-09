@@ -15,7 +15,7 @@ export const postSchema = Joi.object({
         .uri()
         .messages({ "string.uri": "Each media item must be a valid URL" })
     )
-    .optional(),
+    .optional().allow(null, ''),
 
   visibility: Joi.string()
     .valid("public", "private", "followers")
@@ -49,7 +49,7 @@ export const updatePostSchema = Joi.object({
         .uri()
         .messages({ "string.uri": "Each media item must be a valid URL" })
     )
-    .optional(),
+    .optional().allow(null, ''),
 
   visibility: Joi.string()
     .valid("public", "private", "followers")
