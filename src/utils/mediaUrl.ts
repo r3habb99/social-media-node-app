@@ -14,7 +14,7 @@ export const getFullMediaUrl = (relativePath: string): string => {
   // Get the backend URL from environment variables
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
   const host = HOST || 'localhost';
-  const port = PORT || '8080';
+  const port = PORT || '5050';
 
   // For production, you might not want to include the port in the URL
   const baseUrl = process.env.NODE_ENV === 'production'

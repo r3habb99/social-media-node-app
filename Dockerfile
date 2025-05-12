@@ -49,12 +49,12 @@ VOLUME /app/uploads
 
 # Set environment variables
 ENV NODE_ENV=production \
-    PORT=8080 \
+    PORT=5050 \
     HOST=0.0.0.0
 
 # Add healthcheck using curl instead of wget
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8080/health || exit 1
+  CMD curl -f http://localhost:5050/health || exit 1
 
 # Security: Add security-related options
 # Set npm log level to reduce output
@@ -63,8 +63,8 @@ ENV NODE_OPTIONS="--max-old-space-size=2048"
 # Switch to non-root user
 USER node
 
-# Expose port 8080
-EXPOSE 8080
+# Expose port 5050
+EXPOSE 5050
 
 # Start the application
 CMD ["node", "dist/server.js"]

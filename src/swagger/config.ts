@@ -10,7 +10,7 @@ export const swaggerConfig = {
   },
   servers: [
     {
-      url: "http://localhost:8080/",
+      url: "http://localhost:5050/",
       description: "Local server",
     },
   ],

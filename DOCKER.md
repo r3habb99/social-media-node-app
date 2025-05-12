@@ -22,11 +22,11 @@ This command builds an image tagged as "chat-app" using the Dockerfile in the cu
 ### Basic Run Command
 
 ```bash
-docker run -p 8080:8080 -d --name chat-app-container chat-app
+docker run -p 5050:5050 -d --name chat-app-container chat-app
 ```
 
 Parameters explained:
-- `-p 8080:8080`: Maps container port 8080 to host port 8080
+- `-p 5050:5050`: Maps container port 5050 to host port 5050
 - `-d`: Runs container in detached mode (background)
 - `--name chat-app-container`: Assigns a name to the container
 - `chat-app`: The image to use
@@ -36,7 +36,7 @@ Parameters explained:
 For production or different environments, you may need to pass environment variables:
 
 ```bash
-docker run -p 8080:8080 -d --name chat-app-container \
+docker run -p 5050:5050 -d --name chat-app-container \
   -e NODE_ENV=production \
   -e MONGODB_URI=mongodb://your-mongodb-uri \
   -e JWT_SECRET=your-jwt-secret \
@@ -50,7 +50,7 @@ docker run -p 8080:8080 -d --name chat-app-container \
 To persist uploaded files between container restarts:
 
 ```bash
-docker run -p 8080:8080 -d --name chat-app-container \
+docker run -p 5050:5050 -d --name chat-app-container \
   -v $(pwd)/local-uploads:/app/uploads \
   chat-app
 ```
@@ -125,7 +125,7 @@ docker-compose down
 7. **Resource Limits**: Consider setting resource limits in production
 
 ```bash
-docker run -p 8080:8080 -d --name chat-app-container \
+docker run -p 5050:5050 -d --name chat-app-container \
   --memory="1g" --cpus="1.0" \
   chat-app
 ```

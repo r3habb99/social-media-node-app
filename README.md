@@ -92,7 +92,7 @@ chat-node/
 3. Create a `.env` file in the root directory with the following variables:
    ```
    MONGO_URI=mongodb://localhost:27017/chat-node
-   PORT=8080
+   PORT=5050
    HOST=localhost
    NODE_ENV=development
    JWT_SECRET=your_jwt_secret
@@ -115,7 +115,7 @@ The API is fully documented using Swagger/OpenAPI. To access the documentation:
 
 2. Open your browser and navigate to:
    ```
-   http://localhost:8080/api-docs
+   http://localhost:5050/api-docs
    ```
 
 3. The Swagger UI will display all available endpoints organized by modules:
