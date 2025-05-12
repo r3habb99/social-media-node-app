@@ -141,19 +141,21 @@ export const initializeSocket = (httpServer: HTTPServer): Server => {
           chatRoomId
         );
 
-        // Update chat's latest message
-        await Chat.findByIdAndUpdate(chatRoomId, {
-          latestMessage: savedMessage._id,
-        });
+        // Update chat's latest message if message was saved successfully
+        if (savedMessage && savedMessage._id) {
+          await Chat.findByIdAndUpdate(chatRoomId, {
+            latestMessage: savedMessage._id,
+          });
 
-        // Broadcast message to room
-        io.to(chatRoomId).emit("message received", savedMessage);
+          // Broadcast message to room
+          io.to(chatRoomId).emit("message received", savedMessage);
 
-        // Confirm delivery to sender
-        socket.emit("message delivered", {
-          messageId: savedMessage._id,
-          timestamp: new Date(),
-        });
+          // Confirm delivery to sender
+          socket.emit("message delivered", {
+            messageId: savedMessage._id,
+            timestamp: new Date(),
+          });
+        }
 
         logger.info(
           `📨 Message from ${userId} saved and broadcasted to room: ${chatRoomId}`

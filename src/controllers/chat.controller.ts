@@ -14,6 +14,7 @@ import {
 import { Chat } from "../entities";
 import { HttpResponseMessages, HttpStatusCodes } from "../constants";
 import { IUser } from "../interfaces/user.interface";
+import { getFullMediaUrl } from "../utils/mediaUrl";
 
 /**
  * Create a new individual chat
@@ -182,7 +183,9 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     const message = await saveMessage(senderId, content, chatId);
 
     // Update the latest message in the chat
-    await Chat.findByIdAndUpdate(chatId, { latestMessage: message._id });
+    if (message && message._id) {
+      await Chat.findByIdAndUpdate(chatId, { latestMessage: message._id });
+    }
 
     logger.info("Message sent successfully");
     return sendResponse({
@@ -242,6 +245,31 @@ export const getUserChats = async (req: AuthRequest, res: Response) => {
           chat.chatName =
             username || `${firstName} ${lastName}`.trim() || "Chat";
         }
+      }
+
+      // Manually ensure all profile pictures have full URLs
+      if (chat.users && Array.isArray(chat.users)) {
+        chat.users = chat.users.map((user: any) => {
+          if (user && typeof user === 'object' && 'profilePic' in user &&
+              typeof user.profilePic === 'string' && !user.profilePic.startsWith('http')) {
+            user.profilePic = getFullMediaUrl(user.profilePic);
+          }
+          if (user && typeof user === 'object' && 'coverPhoto' in user &&
+              typeof user.coverPhoto === 'string' && !user.coverPhoto.startsWith('http')) {
+            user.coverPhoto = getFullMediaUrl(user.coverPhoto);
+          }
+          return user;
+        }) as any;
+      }
+
+      // Also ensure the latest message sender's profile picture has a full URL
+      if (chat.latestMessage && typeof chat.latestMessage === 'object' &&
+          'sender' in chat.latestMessage && chat.latestMessage.sender &&
+          typeof chat.latestMessage.sender === 'object' &&
+          'profilePic' in chat.latestMessage.sender &&
+          typeof chat.latestMessage.sender.profilePic === 'string' &&
+          !chat.latestMessage.sender.profilePic.startsWith('http')) {
+        (chat.latestMessage.sender as any).profilePic = getFullMediaUrl(chat.latestMessage.sender.profilePic);
       }
 
       return chat;

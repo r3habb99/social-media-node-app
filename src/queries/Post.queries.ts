@@ -18,14 +18,33 @@ const transformPostMediaUrls = (post: IPost | null): IPost | null => {
     postObj.media = postObj.media.map((url: string) => getFullMediaUrl(url));
   }
 
+  // Transform profile picture URL of the user who posted
+  if (postObj.postedBy && postObj.postedBy.profilePic) {
+    postObj.postedBy.profilePic = getFullMediaUrl(postObj.postedBy.profilePic);
+  }
+
   // Transform media URLs in retweetData if it exists
-  if (postObj.retweetData && postObj.retweetData.media && Array.isArray(postObj.retweetData.media)) {
-    postObj.retweetData.media = postObj.retweetData.media.map((url: string) => getFullMediaUrl(url));
+  if (postObj.retweetData) {
+    if (postObj.retweetData.media && Array.isArray(postObj.retweetData.media)) {
+      postObj.retweetData.media = postObj.retweetData.media.map((url: string) => getFullMediaUrl(url));
+    }
+
+    // Transform profile picture in retweetData.postedBy if it exists
+    if (postObj.retweetData.postedBy && postObj.retweetData.postedBy.profilePic) {
+      postObj.retweetData.postedBy.profilePic = getFullMediaUrl(postObj.retweetData.postedBy.profilePic);
+    }
   }
 
   // Transform media URLs in replyTo if it exists
-  if (postObj.replyTo && postObj.replyTo.media && Array.isArray(postObj.replyTo.media)) {
-    postObj.replyTo.media = postObj.replyTo.media.map((url: string) => getFullMediaUrl(url));
+  if (postObj.replyTo) {
+    if (postObj.replyTo.media && Array.isArray(postObj.replyTo.media)) {
+      postObj.replyTo.media = postObj.replyTo.media.map((url: string) => getFullMediaUrl(url));
+    }
+
+    // Transform profile picture in replyTo.postedBy if it exists
+    if (postObj.replyTo.postedBy && postObj.replyTo.postedBy.profilePic) {
+      postObj.replyTo.postedBy.profilePic = getFullMediaUrl(postObj.replyTo.postedBy.profilePic);
+    }
   }
 
   return postObj as unknown as IPost;

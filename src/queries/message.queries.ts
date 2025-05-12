@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Message } from "../entities";
 import { logger } from "../services";
+import { transformMessagesMediaUrls, transformMessageMediaUrls } from "../utils/messageMediaUrl";
 
 /**
  * Save a new message
@@ -12,7 +13,12 @@ export const saveMessage = async (senderId: string, content: string, chatId: str
       content,
       chat: chatId,
     });
-    return message;
+
+    // Populate the sender to get their profile picture
+    await message.populate("sender", "-password");
+
+    // Transform profile picture URL to full URL
+    return transformMessageMediaUrls(message);
   } catch (error) {
     logger.error("Error saving message", error);
     throw error;
@@ -87,7 +93,9 @@ export const getMessages = async (chatId: string, limit = 20, skip = 0) => {
       .skip(skip)
       .limit(limit)
       .populate("sender", "-password");
-    return messages;
+
+    // Transform profile picture URLs to full URLs
+    return transformMessagesMediaUrls(messages);
   } catch (error) {
     logger.error("Error fetching messages", error);
     throw error;
@@ -105,7 +113,9 @@ export const searchMessages = async (chatId: string, query: string) => {
       isDeleted: false,
       $or: [{ content: regex }],
     }).populate("sender", "-password");
-    return messages;
+
+    // Transform profile picture URLs to full URLs
+    return transformMessagesMediaUrls(messages);
   } catch (error) {
     logger.error("Error searching messages", error);
     throw error;

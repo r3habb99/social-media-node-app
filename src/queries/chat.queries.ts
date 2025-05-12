@@ -2,6 +2,9 @@ import mongoose from "mongoose";
 import { Chat, Message } from "../entities";
 import { IChat } from "../interfaces";
 import { logger } from "../services";
+import { transformChatMediaUrls, transformChatsMediaUrls } from "../utils/chatMediaUrl";
+import { transformMessagesMediaUrls } from "../utils/messageMediaUrl";
+import { getFullMediaUrl } from "../utils/mediaUrl";
 
 /**
  * Create a new chat
@@ -16,7 +19,14 @@ export const createChat = async (
       isGroupChat: true,
       chatName: chatName || "Group Chat",
     };
-    return await Chat.create(chatData);
+    const newChat = await Chat.create(chatData);
+
+    // Populate users to get their profile pictures
+    await newChat.populate("users", "-password");
+
+    // Transform profile picture URLs to full URLs
+    const chatWithFullUrls = transformChatMediaUrls(newChat);
+    return chatWithFullUrls || undefined;
   } catch (error) {
     logger.error("Error creating chat", error);
     return undefined;
@@ -28,12 +38,41 @@ export const createChat = async (
  */
 export const fetchUserMessages = async (userId: string) => {
   try {
-    return await Chat.find({
+    const chats = await Chat.find({
       users: { $elemMatch: { $eq: userId } },
     })
       .populate("users", "-password")
-      .populate("latestMessage")
+      .populate({
+        path: "latestMessage",
+        populate: {
+          path: "sender",
+          select: "-password"
+        }
+      })
       .sort({ updatedAt: -1 });
+
+    // Transform profile picture URLs to full URLs
+    const transformedChats = transformChatsMediaUrls(chats);
+
+    // Double-check that all profile pictures have full URLs
+    if (transformedChats && transformedChats.length > 0) {
+      transformedChats.forEach(chat => {
+        if (chat.users && Array.isArray(chat.users)) {
+          chat.users.forEach((user: any) => {
+            if (user && typeof user === 'object' && 'profilePic' in user) {
+              if (user.profilePic && typeof user.profilePic === 'string' && !user.profilePic.startsWith('http')) {
+                user.profilePic = getFullMediaUrl(user.profilePic);
+              }
+              if (user.coverPhoto && typeof user.coverPhoto === 'string' && !user.coverPhoto.startsWith('http')) {
+                user.coverPhoto = getFullMediaUrl(user.coverPhoto);
+              }
+            }
+          });
+        }
+      });
+    }
+
+    return transformedChats;
   } catch (error) {
     logger.error("Error fetching user messages", error);
     return undefined;
@@ -45,9 +84,12 @@ export const fetchUserMessages = async (userId: string) => {
  */
 export const getMessages = async (chatId: string) => {
   try {
-    return await Message.find({ chat: chatId, isDeleted: false })
+    const messages = await Message.find({ chat: chatId, isDeleted: false })
       .populate("sender", "-password")
       .sort({ createdAt: 1 });
+
+    // Transform profile picture URLs to full URLs
+    return transformMessagesMediaUrls(messages);
   } catch (error) {
     logger.error("Error fetching messages", error);
     return undefined;
@@ -59,11 +101,14 @@ export const getMessages = async (chatId: string) => {
  */
 export const addUserToGroup = async (chatId: string, userId: string) => {
   try {
-    return await Chat.findByIdAndUpdate(
+    const updatedChat = await Chat.findByIdAndUpdate(
       chatId,
       { $addToSet: { users: userId } },
       { new: true }
     ).populate("users", "-password");
+
+    // Transform profile picture URLs to full URLs
+    return transformChatMediaUrls(updatedChat);
   } catch (error) {
     logger.error("Error adding user to group", error);
     throw error;
@@ -75,11 +120,14 @@ export const addUserToGroup = async (chatId: string, userId: string) => {
  */
 export const removeUserFromGroup = async (chatId: string, userId: string) => {
   try {
-    return await Chat.findByIdAndUpdate(
+    const updatedChat = await Chat.findByIdAndUpdate(
       chatId,
       { $pull: { users: userId } },
       { new: true }
     ).populate("users", "-password");
+
+    // Transform profile picture URLs to full URLs
+    return transformChatMediaUrls(updatedChat);
   } catch (error) {
     logger.error("Error removing user from group", error);
     throw error;
@@ -91,11 +139,14 @@ export const removeUserFromGroup = async (chatId: string, userId: string) => {
  */
 export const updateGroupName = async (chatId: string, chatName: string) => {
   try {
-    return await Chat.findByIdAndUpdate(
+    const updatedChat = await Chat.findByIdAndUpdate(
       chatId,
       { chatName },
       { new: true }
     ).populate("users", "-password");
+
+    // Transform profile picture URLs to full URLs
+    return transformChatMediaUrls(updatedChat);
   } catch (error) {
     logger.error("Error updating group name", error);
     throw error;
@@ -133,11 +184,14 @@ export const getUnreadMessageCount = async (userId: string) => {
  */
 export const archiveChat = async (chatId: string) => {
   try {
-    return await Chat.findByIdAndUpdate(
+    const archivedChat = await Chat.findByIdAndUpdate(
       chatId,
       { isDeleted: true, deletedAt: new Date() },
       { new: true }
-    );
+    ).populate("users", "-password");
+
+    // Transform profile picture URLs to full URLs
+    return transformChatMediaUrls(archivedChat);
   } catch (error) {
     logger.error("Error archiving chat", error);
     throw error;
