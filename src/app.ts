@@ -5,6 +5,7 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import helmet from "helmet";
+
 import rateLimit from "express-rate-limit";
 
 dotenv.config();
@@ -115,6 +116,10 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
 // Initialize WebSocket server
 const io = initializeSocket(httpServer);
+
+// Set socket instance in the centralized notification service
+import { setSocketInstance } from "./services/notificationService";
+setSocketInstance(io);
 
 export const startServer = () => {
   try {

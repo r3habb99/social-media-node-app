@@ -27,6 +27,16 @@ export const ErrorMessageCodes = {
   INTERNAL_SERVER_ERROR: "INTERNAL_SERVER_ERROR",
 };
 
+// Notification types
+export const NotificationTypes = {
+  FOLLOW: "follow",
+  LIKE: "like",
+  RETWEET: "retweet",
+  COMMENT: "comment",
+  REPLY: "reply",
+  NEW_MESSAGE: "newMessage"
+};
+
 // Enum for user types
 export enum UserType {
   SUPER_ADMIN = 0,

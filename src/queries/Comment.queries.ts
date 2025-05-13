@@ -1,8 +1,10 @@
 import mongoose from "mongoose";
-import { Comment, User } from "../entities";
+import { Comment, User, Post } from "../entities";
 import { IComment } from "../interfaces";
 import { logger } from "../services";
 import { getFullMediaUrl } from "../utils/mediaUrl";
+import { insertNotification } from "./NotificationService.queries";
+import { NotificationTypes } from "../constants";
 
 /**
  * Helper function to transform profile picture URLs in comments
@@ -52,16 +54,45 @@ export const createComment = async (
     }
 
     const comment = await Comment.create(commentData);
-    
+
     // Populate the author field
     await comment.populate("author");
-    
+
     // Populate replyTo if it exists
     if (comment.replyTo) {
       await comment.populate({
         path: "replyTo",
         populate: { path: "author" }
       });
+    }
+
+    // Create notification for the post owner
+    try {
+      // Get the post to find its owner
+      const post = await Post.findById(postId);
+
+      if (post) {
+        const postOwnerId = post.postedBy.toString();
+
+        // Don't send notification if the commenter is the post owner
+        if (postOwnerId !== authorId) {
+          // If this is a reply to a comment, use REPLY notification type
+          const notificationType = replyToId ? NotificationTypes.REPLY : NotificationTypes.COMMENT;
+
+          // Create notification
+          await insertNotification(
+            new mongoose.Types.ObjectId(postOwnerId),
+            new mongoose.Types.ObjectId(authorId),
+            notificationType,
+            comment._id as unknown as mongoose.Types.ObjectId
+          );
+
+          logger.info(`Created ${notificationType} notification for user ${postOwnerId}`);
+        }
+      }
+    } catch (notificationError) {
+      // Log error but don't fail the comment creation
+      logger.error(`Error creating notification for comment: ${notificationError}`);
     }
 
     // Transform profile picture URLs
@@ -83,21 +114,21 @@ export const getCommentsForPost = async (
 ): Promise<{ comments: IComment[]; total: number; hasMore: boolean }> => {
   try {
     const skip = (page - 1) * limit;
-    
+
     // Query to get only parent comments (not replies) or all comments
-    const query: any = { 
+    const query: any = {
       postId: new mongoose.Types.ObjectId(postId),
       isDeleted: false
     };
-    
+
     // If parentOnly is true, only get comments that are not replies
     if (parentOnly) {
       query.replyTo = { $exists: false };
     }
-    
+
     // Get total count for pagination
     const total = await Comment.countDocuments(query);
-    
+
     // Get comments with pagination
     const comments = await Comment.find(query)
       .sort({ createdAt: -1 })
@@ -109,13 +140,13 @@ export const getCommentsForPost = async (
         populate: { path: "author" }
       })
       .exec();
-    
+
     // Check if there are more comments
     const hasMore = comments.length > limit;
-    
+
     // Remove the extra comment if there are more
     const paginatedComments = hasMore ? comments.slice(0, limit) : comments;
-    
+
     // Transform profile picture URLs
     return {
       comments: transformCommentsMediaUrls(paginatedComments),
@@ -138,16 +169,16 @@ export const getRepliesForComment = async (
 ): Promise<{ replies: IComment[]; total: number; hasMore: boolean }> => {
   try {
     const skip = (page - 1) * limit;
-    
+
     // Query to get replies to a specific comment
-    const query = { 
+    const query = {
       replyTo: new mongoose.Types.ObjectId(commentId),
       isDeleted: false
     };
-    
+
     // Get total count for pagination
     const total = await Comment.countDocuments(query);
-    
+
     // Get replies with pagination
     const replies = await Comment.find(query)
       .sort({ createdAt: -1 })
@@ -159,13 +190,13 @@ export const getRepliesForComment = async (
         populate: { path: "author" }
       })
       .exec();
-    
+
     // Check if there are more replies
     const hasMore = replies.length > limit;
-    
+
     // Remove the extra reply if there are more
     const paginatedReplies = hasMore ? replies.slice(0, limit) : replies;
-    
+
     // Transform profile picture URLs
     return {
       replies: transformCommentsMediaUrls(paginatedReplies),
@@ -193,18 +224,18 @@ export const updateComment = async (
       author: authorId,
       isDeleted: false
     });
-    
+
     if (!comment) {
       logger.error(`Comment not found or user does not have permission to update`);
       return null;
     }
-    
+
     // Update the content
     comment.content = content;
-    
+
     // Save the updated comment
     await comment.save();
-    
+
     // Return the updated comment with populated fields
     const updatedComment = await Comment.findById(commentId)
       .populate("author")
@@ -212,7 +243,7 @@ export const updateComment = async (
         path: "replyTo",
         populate: { path: "author" }
       });
-    
+
     // Transform profile picture URLs
     return transformCommentMediaUrls(updatedComment);
   } catch (error) {
@@ -235,19 +266,19 @@ export const deleteComment = async (
       author: authorId,
       isDeleted: false
     });
-    
+
     if (!comment) {
       logger.error(`Comment not found or user does not have permission to delete`);
       return false;
     }
-    
+
     // Soft delete the comment
     comment.isDeleted = true;
     comment.deletedAt = new Date();
-    
+
     // Save the updated comment
     await comment.save();
-    
+
     return true;
   } catch (error) {
     logger.error(`Error deleting comment: ${error}`);
@@ -265,10 +296,10 @@ export const toggleLikeComment = async (
   try {
     const comment = await Comment.findById(commentId);
     if (!comment || comment.isDeleted) return null;
-    
+
     const isLiked = comment.likes.includes(new mongoose.Types.ObjectId(userId));
     const option = isLiked ? "$pull" : "$addToSet";
-    
+
     // Update the comment's likes array
     const updatedComment = await Comment.findByIdAndUpdate(
       commentId,
@@ -280,7 +311,7 @@ export const toggleLikeComment = async (
       path: "replyTo",
       populate: { path: "author" }
     });
-    
+
     // Transform profile picture URLs
     return transformCommentMediaUrls(updatedComment);
   } catch (error) {
@@ -294,7 +325,7 @@ export const toggleLikeComment = async (
  */
 export const countCommentsForPost = async (postId: string): Promise<number> => {
   try {
-    return await Comment.countDocuments({ 
+    return await Comment.countDocuments({
       postId: new mongoose.Types.ObjectId(postId),
       isDeleted: false
     });

@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { AuthRequest, logger, sendResponse } from "../services";
+import { AuthRequest, logger, sendResponse, createNotification } from "../services";
 import {
   createPost,
   deletePost,
@@ -9,7 +9,7 @@ import {
   toggleLikePost,
   updatePost,
 } from "../queries";
-import { HttpResponseMessages, HttpStatusCodes } from "../constants";
+import { HttpResponseMessages, HttpStatusCodes, NotificationTypes } from "../constants";
 import { IPost } from "../interfaces";
 import { getFullMediaUrl } from "../utils/mediaUrl";
 
@@ -176,7 +176,9 @@ export const handleCreatePost = async (req: AuthRequest, res: Response) => {
 // Like a post
 export const handleLikePost = async (req: AuthRequest, res: Response) => {
   try {
-    const updatedPost = await toggleLikePost(req.params.id, req.user!.id);
+    const postId = req.params.id;
+    const userId = req.user!.id;
+    const updatedPost = await toggleLikePost(postId, userId);
 
     if (!updatedPost) {
       logger.error("Post not found");
@@ -186,6 +188,32 @@ export const handleLikePost = async (req: AuthRequest, res: Response) => {
         message: HttpResponseMessages.NOT_FOUND,
         data: { post: null },
       });
+    }
+
+    // Check if the post was liked (not unliked) by checking if the user's ID is in the likes array
+    const isLiked = updatedPost.likes.some(
+      likeId => likeId.toString() === userId
+    );
+
+    // Send notification if the post was liked and not the user's own post
+    if (isLiked && updatedPost.postedBy && updatedPost.postedBy._id.toString() !== userId) {
+      try {
+        // Create notification data
+        const postOwnerId = updatedPost.postedBy._id.toString();
+        const postContent = updatedPost.content || '';
+
+        // Send notification
+        await createNotification(
+          postOwnerId,
+          userId,
+          NotificationTypes.LIKE,
+          postId,
+          postContent.substring(0, 50) // Include a snippet of the post content
+        );
+      } catch (notificationError) {
+        // Log error but don't fail the like operation
+        logger.error("Error sending like notification:", notificationError);
+      }
     }
 
     return sendResponse({
@@ -208,7 +236,38 @@ export const handleLikePost = async (req: AuthRequest, res: Response) => {
 // Retweet post
 export const handleRetweetPost = async (req: AuthRequest, res: Response) => {
   try {
-    const { post, deleted } = await retweetPost(req.params.id, req.user!.id);
+    const postId = req.params.id;
+    const userId = req.user!.id;
+    const { post, deleted } = await retweetPost(postId, userId);
+
+    // Only send notification if the post was retweeted (not un-retweeted)
+    if (post && !deleted) {
+      try {
+        // Get the original post to find its owner
+        const originalPost = await getPostById(postId);
+
+        if (originalPost && originalPost.postedBy && originalPost.postedBy._id) {
+          const postOwnerId = originalPost.postedBy._id.toString();
+
+          // Don't send notification if the user is retweeting their own post
+          if (postOwnerId !== userId) {
+            const postContent = originalPost.content || '';
+
+            // Send notification
+            await createNotification(
+              postOwnerId,
+              userId,
+              NotificationTypes.RETWEET,
+              postId,
+              postContent.substring(0, 50) // Include a snippet of the post content
+            );
+          }
+        }
+      } catch (notificationError) {
+        // Log error but don't fail the retweet operation
+        logger.error("Error sending real-time retweet notification:", notificationError);
+      }
+    }
 
     logger.info("Post retweeted successfully");
     return sendResponse({

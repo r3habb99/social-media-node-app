@@ -3,6 +3,7 @@ import { Server, Socket } from "socket.io";
 import { logger } from "./services";
 import { saveMessage, markMessageAsRead, getMessages } from "./queries";
 import { Chat } from "./entities";
+import mongoose from "mongoose";
 
 // Interface for socket user data
 interface SocketUser {
@@ -13,6 +14,30 @@ interface SocketUser {
 
 // Map to store active users
 const activeUsers = new Map<string, SocketUser>();
+
+// Map to store user's socket IDs (userId -> socketId)
+const userSockets = new Map<string, string[]>();
+
+// Function to emit notification to a specific user
+export const emitNotification = (io: Server, userId: string, notification: any) => {
+  try {
+    const socketIds = userSockets.get(userId);
+    if (socketIds && socketIds.length > 0) {
+      // Send notification to all user's connected devices
+      socketIds.forEach(socketId => {
+        io.to(socketId).emit('notification', notification);
+      });
+      logger.info(`Notification sent to user ${userId}`);
+      return true;
+    } else {
+      logger.info(`User ${userId} is not connected, notification not sent in real-time`);
+      return false;
+    }
+  } catch (error) {
+    logger.error(`Error sending notification to user ${userId}:`, error);
+    return false;
+  }
+};
 
 export const initializeSocket = (httpServer: HTTPServer): Server => {
   const io = new Server(httpServer, {
@@ -56,6 +81,12 @@ export const initializeSocket = (httpServer: HTTPServer): Server => {
       username: socket.handshake.auth.username || "Anonymous",
       rooms: [],
     });
+
+    // Track user's socket ID
+    if (!userSockets.has(userId)) {
+      userSockets.set(userId, []);
+    }
+    userSockets.get(userId)?.push(socket.id);
 
     // Emit online status to all users
     io.emit("user online", { userId });
@@ -297,8 +328,24 @@ export const initializeSocket = (httpServer: HTTPServer): Server => {
         // Remove user from active users map
         activeUsers.delete(socket.id);
 
-        // Broadcast offline status
-        io.emit("user offline", { userId });
+        // Remove socket from user's sockets list
+        if (userSockets.has(userId)) {
+          const userSocketIds = userSockets.get(userId) || [];
+          const updatedSocketIds = userSocketIds.filter(id => id !== socket.id);
+
+          if (updatedSocketIds.length === 0) {
+            // If no more sockets for this user, remove the user entry
+            userSockets.delete(userId);
+            // Broadcast offline status only if user has no more active connections
+            io.emit("user offline", { userId });
+          } else {
+            // Update the user's socket list
+            userSockets.set(userId, updatedSocketIds);
+          }
+        } else {
+          // Broadcast offline status
+          io.emit("user offline", { userId });
+        }
 
         logger.info(`User ${userId} is now offline`);
       } catch (error: any) {

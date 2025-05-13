@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { AuthRequest, logger, sendResponse } from "../services";
+import { AuthRequest, logger, sendResponse, createNotification } from "../services";
 import {
   createComment,
   getCommentsForPost,
@@ -7,8 +7,9 @@ import {
   updateComment,
   deleteComment,
   toggleLikeComment,
+  getPostById,
 } from "../queries";
-import { HttpResponseMessages, HttpStatusCodes } from "../constants";
+import { HttpResponseMessages, HttpStatusCodes, NotificationTypes } from "../constants";
 
 /**
  * Create a new comment on a post
@@ -29,6 +30,36 @@ export const handleCreateComment = async (req: AuthRequest, res: Response) => {
 
     const comment = await createComment(postId, req.user!.id, content, replyToId);
     logger.info("Comment created successfully");
+
+    // Send real-time notification
+    try {
+      // Get post details to find the post owner
+      const post = await getPostById(postId);
+
+      if (post && post.postedBy && post.postedBy._id) {
+        const postOwnerId = post.postedBy._id.toString();
+
+        // Don't send notification if the commenter is the post owner
+        if (postOwnerId !== req.user!.id) {
+          // Determine notification type
+          const notificationType = replyToId ? NotificationTypes.REPLY : NotificationTypes.COMMENT;
+
+          // Create and send notification
+          await createNotification(
+            postOwnerId,
+            req.user!.id,
+            notificationType,
+            postId,
+            content.length > 50 ? content.substring(0, 50) + '...' : content
+          );
+
+          logger.info(`${notificationType} notification sent to user ${postOwnerId}`);
+        }
+      }
+    } catch (notificationError) {
+      // Log error but don't fail the comment creation
+      logger.error("Error sending notification:", notificationError);
+    }
 
     return sendResponse({
       res,

@@ -4,6 +4,8 @@ import { Post, User, Comment } from "../entities";
 import { logger } from "../services";
 import { getFullMediaUrl } from "../utils/mediaUrl";
 import { countCommentsForPost } from "./Comment.queries";
+import { insertNotification } from "./NotificationService.queries";
+import { NotificationTypes } from "../constants";
 
 /**
  * Helper function to transform media URLs in a post to full URLs and add comment count
@@ -211,6 +213,26 @@ export const toggleLikePost = async (
       { [option]: { likes: new mongoose.Types.ObjectId(postId) } } // Add/remove the postId
     );
 
+    // Create notification if the post was liked (not unliked)
+    if (!isLiked && updatedPost && updatedPost.postedBy) {
+      const postOwnerId = updatedPost.postedBy._id.toString();
+
+      // Don't send notification if the user is liking their own post
+      if (postOwnerId !== userId) {
+        try {
+          await insertNotification(
+            new mongoose.Types.ObjectId(postOwnerId),
+            new mongoose.Types.ObjectId(userId),
+            NotificationTypes.LIKE,
+            new mongoose.Types.ObjectId(postId)
+          );
+          logger.info(`Created like notification for user ${postOwnerId}`);
+        } catch (notificationError) {
+          logger.error(`Error creating like notification: ${notificationError}`);
+        }
+      }
+    }
+
     // Transform media URLs to full URLs and add comment count
     return await transformPostMediaUrls(updatedPost);
   } catch (error) {
@@ -284,6 +306,26 @@ export const retweetPost = async (
         { path: "retweetUsers" }
       ]
     });
+
+    // Create notification for the original post owner
+    if (originalPost.postedBy) {
+      const postOwnerId = originalPost.postedBy.toString();
+
+      // Don't send notification if the user is retweeting their own post
+      if (postOwnerId !== userId) {
+        try {
+          await insertNotification(
+            new mongoose.Types.ObjectId(postOwnerId),
+            new mongoose.Types.ObjectId(userId),
+            NotificationTypes.RETWEET,
+            new mongoose.Types.ObjectId(postId)
+          );
+          logger.info(`Created retweet notification for user ${postOwnerId}`);
+        } catch (notificationError) {
+          logger.error(`Error creating retweet notification: ${notificationError}`);
+        }
+      }
+    }
 
     // Transform media URLs in the repost and add comment count
     return { post: await transformPostMediaUrls(repost), deleted: false };

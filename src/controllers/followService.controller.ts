@@ -1,6 +1,6 @@
 import { Response } from "express";
-import { AuthRequest, logger, sendResponse } from "../services";
-import { HttpResponseMessages, HttpStatusCodes } from "../constants";
+import { AuthRequest, logger, sendResponse, createNotification } from "../services";
+import { HttpResponseMessages, HttpStatusCodes, NotificationTypes } from "../constants";
 import {
   findUserById,
   getUserFollowers,
@@ -74,12 +74,28 @@ export const toggleFollowUser = async (req: AuthRequest, res: Response) => {
     // Send notification if followed
     if (!isFollowing) {
       logger.info("Inserting notification");
+
+      // Create database notification
       await insertNotification(
         userIdObj,
         currentUserIdObj,
-        "follow",
+        NotificationTypes.FOLLOW,
         currentUserIdObj
       );
+
+      // Send notification
+      try {
+        await createNotification(
+          userId,
+          currentUserId,
+          NotificationTypes.FOLLOW,
+          currentUserId
+        );
+        logger.info(`Follow notification sent to user ${userId}`);
+      } catch (notificationError) {
+        // Log error but don't fail the follow operation
+        logger.error("Error sending follow notification:", notificationError);
+      }
     }
     logger.info("User followed successfully");
     return sendResponse({
