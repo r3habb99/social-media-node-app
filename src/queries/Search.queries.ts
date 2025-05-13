@@ -2,9 +2,10 @@ import { User } from "../entities";
 import { logger } from "../services";
 import { transformUsersMediaUrls } from "../utils/userMediaUrl";
 
-export const searchUsersInDB = async (query: string) => {
+export const searchUsersInDB = async (query: string, currentUserId?: string) => {
   try {
-    const searchQuery = {
+    // Base search query
+    const baseQuery = {
       $or: [
         { username: { $regex: query, $options: "i" } },
         { firstName: { $regex: query, $options: "i" } },
@@ -12,6 +13,14 @@ export const searchUsersInDB = async (query: string) => {
         { email: { $regex: query, $options: "i" } },
       ],
     };
+
+    // If currentUserId is provided, exclude the current user from results
+    const searchQuery = currentUserId
+      ? {
+          ...baseQuery,
+          _id: { $ne: currentUserId } // Exclude the current user
+        }
+      : baseQuery;
 
     // Query the User collection with the built search query
     const users = await User.find(searchQuery);

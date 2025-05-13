@@ -1,10 +1,10 @@
-import { Request, Response } from "express";
-import { logger, sendResponse } from "../services";
+import { Response } from "express";
+import { AuthRequest, logger, sendResponse } from "../services";
 import { HttpResponseMessages, HttpStatusCodes } from "../constants";
 import { searchUsersInDB } from "../queries";
 
 export const searchUsers = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ): Promise<void> => {
   try {
@@ -44,8 +44,9 @@ export const searchUsers = async (
       searchQuery = "";
     }
 
-    // Proceed with searching users
-    const users = await searchUsersInDB(searchQuery);
+    // Proceed with searching users, excluding the current user
+    const currentUserId = req.user?.id;
+    const users = await searchUsersInDB(searchQuery, currentUserId);
 
     if (!users.length) {
       return sendResponse({
