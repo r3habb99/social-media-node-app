@@ -7,6 +7,7 @@ import { chatRoutes } from "./chatRoutes";
 import { messageRoutes } from "./messageRoutes";
 import { postRoutes } from "./postRoutes";
 import { notificationRoutes } from "./notificationRoutes";
+import { commentRoutes } from "./commentRoutes";
 
 // Combine all routes
 const paths = {
@@ -15,6 +16,7 @@ const paths = {
   ...messageRoutes,
   ...postRoutes,
   ...notificationRoutes,
+  ...commentRoutes,
 };
 
 // Create the complete Swagger specification

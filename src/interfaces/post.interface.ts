@@ -15,4 +15,5 @@ export interface IPost extends Document {
   deletedAt?: Date | null; // Timestamp for soft deletion
   createdAt: Date; // Timestamp for creation
   updatedAt: Date; // Timestamp for last update
+  commentCount?: number; // Number of comments on this post (added dynamically)
 }

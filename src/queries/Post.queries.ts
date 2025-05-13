@@ -1,13 +1,14 @@
 import mongoose from "mongoose";
 import { IPost } from "../interfaces";
-import { Post, User } from "../entities";
+import { Post, User, Comment } from "../entities";
 import { logger } from "../services";
 import { getFullMediaUrl } from "../utils/mediaUrl";
+import { countCommentsForPost } from "./Comment.queries";
 
 /**
- * Helper function to transform media URLs in a post to full URLs
+ * Helper function to transform media URLs in a post to full URLs and add comment count
  */
-const transformPostMediaUrls = (post: IPost | null): IPost | null => {
+const transformPostMediaUrls = async (post: IPost | null): Promise<IPost | null> => {
   if (!post) return null;
 
   // Create a new object to avoid modifying the original
@@ -47,14 +48,29 @@ const transformPostMediaUrls = (post: IPost | null): IPost | null => {
     }
   }
 
+  // Add comment count to the post
+  try {
+    const commentCount = await Comment.countDocuments({
+      postId: post._id,
+      isDeleted: false
+    });
+
+    // Add commentCount as a property to the post object
+    (postObj as any).commentCount = commentCount;
+  } catch (error) {
+    logger.error(`Error counting comments for post: ${error}`);
+    (postObj as any).commentCount = 0;
+  }
+
   return postObj as unknown as IPost;
 };
 
 /**
  * Helper function to transform media URLs in an array of posts
  */
-const transformPostsMediaUrls = (posts: IPost[]): IPost[] => {
-  return posts.map(post => transformPostMediaUrls(post)).filter(Boolean) as IPost[];
+const transformPostsMediaUrls = async (posts: IPost[]): Promise<IPost[]> => {
+  const transformedPosts = await Promise.all(posts.map(post => transformPostMediaUrls(post)));
+  return transformedPosts.filter(Boolean) as IPost[];
 };
 
 // Get Posts with Filters and Pagination
@@ -115,8 +131,9 @@ export const getPosts = async (
     const nextMaxId = paginatedPosts.length > 0 ? paginatedPosts[paginatedPosts.length - 1]._id?.toString() : undefined;
 
     // Transform media URLs to full URLs
+    const transformedPosts = await transformPostsMediaUrls(paginatedPosts || []);
     return {
-      posts: transformPostsMediaUrls(paginatedPosts || []),
+      posts: transformedPosts,
       pagination: {
         next_max_id: hasMore ? nextMaxId : undefined,
         has_more: hasMore
@@ -148,8 +165,8 @@ export const getPostById = async (postId: string): Promise<IPost | null> => {
       .populate("replyTo")
       .exec();
 
-    // Transform media URLs to full URLs
-    return transformPostMediaUrls(post);
+    // Transform media URLs to full URLs and add comment count
+    return await transformPostMediaUrls(post);
   } catch (error) {
     logger.error(`Error fetching post by ID: ${error}`);
     return null; // Return null in case of error
@@ -194,8 +211,8 @@ export const toggleLikePost = async (
       { [option]: { likes: new mongoose.Types.ObjectId(postId) } } // Add/remove the postId
     );
 
-    // Transform media URLs to full URLs
-    return transformPostMediaUrls(updatedPost);
+    // Transform media URLs to full URLs and add comment count
+    return await transformPostMediaUrls(updatedPost);
   } catch (error) {
     logger.error(`Error toggling like on post: ${error}`);
     return null;
@@ -220,8 +237,8 @@ export const retweetPost = async (
         { $pull: { retweets: new mongoose.Types.ObjectId(postId) } }
       );
 
-      // Transform media URLs in the deleted post
-      return { post: transformPostMediaUrls(deletedPost), deleted: true };
+      // Transform media URLs in the deleted post and add comment count
+      return { post: await transformPostMediaUrls(deletedPost), deleted: true };
     }
 
     // Update the original post to add this user to retweetUsers
@@ -268,8 +285,8 @@ export const retweetPost = async (
       ]
     });
 
-    // Transform media URLs in the repost
-    return { post: transformPostMediaUrls(repost), deleted: false };
+    // Transform media URLs in the repost and add comment count
+    return { post: await transformPostMediaUrls(repost), deleted: false };
   } catch (error) {
     logger.error(`Error retweeting post: ${error}`);
     return { post: null }; // Return null if there is an error
@@ -352,8 +369,8 @@ export const updatePost = async (
       .populate("retweetData")
       .populate("replyTo");
 
-    // Transform media URLs to full URLs
-    return transformPostMediaUrls(updatedPost);
+    // Transform media URLs to full URLs and add comment count
+    return await transformPostMediaUrls(updatedPost);
   } catch (error) {
     logger.error(`Error updating post: ${error}`);
     return null;

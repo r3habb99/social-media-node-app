@@ -14,6 +14,7 @@ export { updateUserImage, getUserByIdFromProfilePic, getUserForPassword };
 export * from "./FollowerService.queries";
 export * from "./NotificationService.queries";
 export * from "./Post.queries";
+export * from "./Comment.queries";
 
 // Import and re-export chat queries with specific names to avoid conflicts
 import {
