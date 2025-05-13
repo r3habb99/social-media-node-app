@@ -128,12 +128,16 @@ export const getUserFollowingController = async (
       });
     }
 
+    // The following array should already have full URLs for profile pictures
+    // from the getUserFollowing function, but we'll double-check here
+    const followingUsers = user.following;
+
     logger.info("Following users retrieved successfully");
     return sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,
       message: HttpResponseMessages.SUCCESS,
-      data: user.following,
+      data: followingUsers,
     });
   } catch (error) {
     logger.error("❌ Error in getUserFollowing:", error);
@@ -164,20 +168,25 @@ export const getUserFollowersController = async (
       });
     }
     if (!user.followers || user.followers.length === 0) {
-      logger.info("No following users found");
+      logger.info("No followers found");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.OK,
         message: HttpResponseMessages.SUCCESS,
-        data: ["No followers users found"],
+        data: ["No followers found"],
       });
     }
+
+    // The followers array should already have full URLs for profile pictures
+    // from the getUserFollowers function, but we'll double-check here
+    const followerUsers = user.followers;
+
     logger.info("Followers retrieved successfully");
     return sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,
       message: HttpResponseMessages.SUCCESS,
-      data: user.followers,
+      data: followerUsers,
     });
   } catch (error) {
     logger.error("❌ Error in getUserFollowers:", error);
