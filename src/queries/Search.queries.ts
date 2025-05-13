@@ -1,5 +1,6 @@
 import { User } from "../entities";
 import { logger } from "../services";
+import { transformUsersMediaUrls } from "../utils/userMediaUrl";
 
 export const searchUsersInDB = async (query: string) => {
   try {
@@ -15,7 +16,8 @@ export const searchUsersInDB = async (query: string) => {
     // Query the User collection with the built search query
     const users = await User.find(searchQuery);
 
-    return users; // Return the users matching the search query
+    // Transform user profile pictures to full URLs
+    return transformUsersMediaUrls(users);
   } catch (error) {
     logger.error("Error searching users in database", error);
     return []; // Return an empty array in case of error

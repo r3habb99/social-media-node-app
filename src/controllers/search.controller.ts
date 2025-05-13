@@ -8,11 +8,17 @@ export const searchUsers = async (
   res: Response
 ): Promise<void> => {
   try {
-    // Retrieve the 'query' parameter from the request
-    const { query } = req.query; // Extract 'query' from query parameters
+    // Extract search parameters from the request query
+    const { firstName, lastName, username, email, query } = req.query;
 
-    if (!query || typeof query !== "string" || query.trim() === "") {
-      // If no query is provided, send a bad request response
+    // Check if any search parameter is provided
+    if ((!firstName && !lastName && !username && !email && !query) ||
+        (firstName && typeof firstName !== "string") ||
+        (lastName && typeof lastName !== "string") ||
+        (username && typeof username !== "string") ||
+        (email && typeof email !== "string") ||
+        (query && typeof query !== "string")) {
+      // If no valid search parameter is provided, send a bad request response
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
@@ -21,8 +27,25 @@ export const searchUsers = async (
       });
     }
 
+    // Determine which parameter to use for search
+    let searchQuery: string;
+
+    if (query) {
+      searchQuery = query;
+    } else if (firstName) {
+      searchQuery = firstName;
+    } else if (lastName) {
+      searchQuery = lastName;
+    } else if (username) {
+      searchQuery = username;
+    } else if (email) {
+      searchQuery = email;
+    } else {
+      searchQuery = "";
+    }
+
     // Proceed with searching users
-    const users = await searchUsersInDB(query);
+    const users = await searchUsersInDB(searchQuery);
 
     if (!users.length) {
       return sendResponse({
