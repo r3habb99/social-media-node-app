@@ -17,7 +17,7 @@ import { getFullMediaUrl } from "../utils/mediaUrl";
 export const handleGetPosts = async (req: AuthRequest, res: Response) => {
   try {
     // Extract pagination parameters
-    const { max_id, since_id, limit } = req.query;
+    const { max_id, since_id, limit, includeComments } = req.query;
 
     // Create search object from remaining query parameters
     let searchObj: any = { ...req.query };
@@ -26,6 +26,7 @@ export const handleGetPosts = async (req: AuthRequest, res: Response) => {
     delete searchObj.max_id;
     delete searchObj.since_id;
     delete searchObj.limit;
+    delete searchObj.includeComments;
 
     // Process special filters
     if (typeof searchObj.isReply === "string") {
@@ -42,7 +43,8 @@ export const handleGetPosts = async (req: AuthRequest, res: Response) => {
     const paginationOptions = {
       max_id: max_id as string | undefined,
       since_id: since_id as string | undefined,
-      limit: limit ? parseInt(limit as string, 10) : undefined
+      limit: limit ? parseInt(limit as string, 10) : undefined,
+      includeComments: includeComments === 'false' ? false : true // Default to true if not specified
     };
 
     // Get posts with pagination
@@ -72,7 +74,8 @@ export const handleGetPosts = async (req: AuthRequest, res: Response) => {
 // Get a single post by ID
 export const handleGetPostById = async (req: AuthRequest, res: Response) => {
   try {
-    const post = await getPostById(req.params.id);
+    const includeComments = req.query.includeComments === 'false' ? false : true; // Default to true if not specified
+    const post = await getPostById(req.params.id, includeComments);
     if (!post) {
       logger.error("Post not found");
       return sendResponse({

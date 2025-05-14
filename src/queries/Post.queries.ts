@@ -3,14 +3,14 @@ import { IPost } from "../interfaces";
 import { Post, User, Comment } from "../entities";
 import { logger } from "../services";
 import { getFullMediaUrl } from "../utils/mediaUrl";
-import { countCommentsForPost } from "./Comment.queries";
+import { countCommentsForPost, getCommentsForPost } from "./Comment.queries";
 import { insertNotification } from "./NotificationService.queries";
 import { NotificationTypes } from "../constants";
 
 /**
- * Helper function to transform media URLs in a post to full URLs and add comment count
+ * Helper function to transform media URLs in a post to full URLs and add comments
  */
-const transformPostMediaUrls = async (post: IPost | null): Promise<IPost | null> => {
+const transformPostMediaUrls = async (post: IPost | null, includeComments: boolean = false): Promise<IPost | null> => {
   if (!post) return null;
 
   // Create a new object to avoid modifying the original
@@ -64,14 +64,38 @@ const transformPostMediaUrls = async (post: IPost | null): Promise<IPost | null>
     (postObj as any).commentCount = 0;
   }
 
+  // Fetch comments for the post if includeComments is true
+  if (includeComments) {
+    try {
+      // Make sure post._id is a valid ObjectId
+      const postId = post._id ? post._id.toString() : '';
+      if (postId) {
+        const commentsResult = await getCommentsForPost(postId, 1, 10, true);
+        (postObj as any).comments = commentsResult.comments;
+        (postObj as any).commentsHasMore = commentsResult.hasMore;
+        (postObj as any).commentsTotal = commentsResult.total;
+      } else {
+        logger.error(`Invalid post ID when fetching comments`);
+        (postObj as any).comments = [];
+        (postObj as any).commentsHasMore = false;
+        (postObj as any).commentsTotal = 0;
+      }
+    } catch (error) {
+      logger.error(`Error fetching comments for post: ${error}`);
+      (postObj as any).comments = [];
+      (postObj as any).commentsHasMore = false;
+      (postObj as any).commentsTotal = 0;
+    }
+  }
+
   return postObj as unknown as IPost;
 };
 
 /**
  * Helper function to transform media URLs in an array of posts
  */
-const transformPostsMediaUrls = async (posts: IPost[]): Promise<IPost[]> => {
-  const transformedPosts = await Promise.all(posts.map(post => transformPostMediaUrls(post)));
+const transformPostsMediaUrls = async (posts: IPost[], includeComments: boolean = false): Promise<IPost[]> => {
+  const transformedPosts = await Promise.all(posts.map(post => transformPostMediaUrls(post, includeComments)));
   return transformedPosts.filter(Boolean) as IPost[];
 };
 
@@ -82,6 +106,7 @@ export const getPosts = async (
     max_id?: string;
     since_id?: string;
     limit?: number;
+    includeComments?: boolean;
   }
 ): Promise<{
   posts: IPost[];
@@ -92,6 +117,7 @@ export const getPosts = async (
 }> => {
   try {
     const limit = paginationOptions?.limit || 10; // Default limit is 10
+    const includeComments = paginationOptions?.includeComments !== undefined ? paginationOptions.includeComments : true;
     let query: any = { isDeleted: false, ...filter };
 
     // Apply cursor-based pagination filters
@@ -132,8 +158,8 @@ export const getPosts = async (
     // Get the next_max_id (the ID of the last post in the current set)
     const nextMaxId = paginatedPosts.length > 0 ? paginatedPosts[paginatedPosts.length - 1]._id?.toString() : undefined;
 
-    // Transform media URLs to full URLs
-    const transformedPosts = await transformPostsMediaUrls(paginatedPosts || []);
+    // Transform media URLs to full URLs and include comments if requested
+    const transformedPosts = await transformPostsMediaUrls(paginatedPosts || [], includeComments);
     return {
       posts: transformedPosts,
       pagination: {
@@ -153,7 +179,7 @@ export const getPosts = async (
 };
 
 // Get a single Post by ID
-export const getPostById = async (postId: string): Promise<IPost | null> => {
+export const getPostById = async (postId: string, includeComments: boolean = true): Promise<IPost | null> => {
   try {
     const post = await Post.findOne({ _id: postId, isDeleted: false })
       .populate("postedBy")
@@ -167,8 +193,8 @@ export const getPostById = async (postId: string): Promise<IPost | null> => {
       .populate("replyTo")
       .exec();
 
-    // Transform media URLs to full URLs and add comment count
-    return await transformPostMediaUrls(post);
+    // Transform media URLs to full URLs and add comments if requested
+    return await transformPostMediaUrls(post, includeComments);
   } catch (error) {
     logger.error(`Error fetching post by ID: ${error}`);
     return null; // Return null in case of error
@@ -234,7 +260,7 @@ export const toggleLikePost = async (
     }
 
     // Transform media URLs to full URLs and add comment count
-    return await transformPostMediaUrls(updatedPost);
+    return await transformPostMediaUrls(updatedPost, false);
   } catch (error) {
     logger.error(`Error toggling like on post: ${error}`);
     return null;
@@ -260,7 +286,7 @@ export const retweetPost = async (
       );
 
       // Transform media URLs in the deleted post and add comment count
-      return { post: await transformPostMediaUrls(deletedPost), deleted: true };
+      return { post: await transformPostMediaUrls(deletedPost, false), deleted: true };
     }
 
     // Update the original post to add this user to retweetUsers
@@ -328,7 +354,7 @@ export const retweetPost = async (
     }
 
     // Transform media URLs in the repost and add comment count
-    return { post: await transformPostMediaUrls(repost), deleted: false };
+    return { post: await transformPostMediaUrls(repost, false), deleted: false };
   } catch (error) {
     logger.error(`Error retweeting post: ${error}`);
     return { post: null }; // Return null if there is an error
@@ -412,7 +438,7 @@ export const updatePost = async (
       .populate("replyTo");
 
     // Transform media URLs to full URLs and add comment count
-    return await transformPostMediaUrls(updatedPost);
+    return await transformPostMediaUrls(updatedPost, false);
   } catch (error) {
     logger.error(`Error updating post: ${error}`);
     return null;

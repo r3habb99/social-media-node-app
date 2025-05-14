@@ -43,6 +43,13 @@ export const postRoutes = {
           schema: { type: "integer", default: 10, minimum: 1, maximum: 100 },
           description: "Number of posts to return (default: 10, max: 100)",
         },
+        {
+          name: "includeComments",
+          in: "query",
+          required: false,
+          schema: { type: "boolean", default: true },
+          description: "Whether to include comments in the response (default: true)",
+        },
       ],
       responses: {
         "200": {
@@ -125,6 +132,13 @@ export const postRoutes = {
           required: true,
           schema: { type: "string" },
           description: "ID of the post to retrieve",
+        },
+        {
+          name: "includeComments",
+          in: "query",
+          required: false,
+          schema: { type: "boolean", default: true },
+          description: "Whether to include comments in the response (default: true)",
         },
       ],
       responses: {

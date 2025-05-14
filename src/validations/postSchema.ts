@@ -45,6 +45,10 @@ export const postSchema = Joi.object({
     "number.max": "limit cannot exceed 100",
   }),
 
+  includeComments: Joi.boolean().optional().default(true).messages({
+    "boolean.base": "includeComments must be a boolean",
+  }),
+
   // Fields added by multer middleware
   originalFileName: Joi.string().optional(),
   uploadedFileName: Joi.string().optional(),

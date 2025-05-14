@@ -72,6 +72,21 @@ export const postSchema = {
         type: "integer",
         description: "Number of comments on this post",
       },
+      comments: {
+        type: "array",
+        items: {
+          $ref: "#/components/schemas/Comment",
+        },
+        description: "Comments on this post (included when requested)",
+      },
+      commentsHasMore: {
+        type: "boolean",
+        description: "Whether there are more comments to fetch",
+      },
+      commentsTotal: {
+        type: "integer",
+        description: "Total number of comments on this post",
+      },
       createdAt: {
         type: "string",
         format: "date-time",
