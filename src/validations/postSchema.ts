@@ -25,7 +25,9 @@ export const postSchema = Joi.object({
         "Visibility must be either 'public', 'private', or 'followers'",
     }),
 
-  isReply: Joi.boolean().optional(),
+  replyTo: Joi.string().regex(/^[0-9a-fA-F]{24}$/).optional().messages({
+    "string.pattern.base": "replyTo must be a valid MongoDB ObjectId",
+  }),
 
   search: Joi.string().optional(),
 

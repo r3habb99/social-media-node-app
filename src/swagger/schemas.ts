@@ -168,10 +168,10 @@ export const schemas = {
         example: "public",
         description: "Post visibility setting"
       },
-      isReply: {
-        type: "boolean",
-        example: false,
-        description: "Whether this post is a reply to another post"
+      replyTo: {
+        type: "string",
+        example: "64a1b2c3d4e5f6a7b8c9d0e1",
+        description: "ID of the post this is a reply to"
       }
     },
   },

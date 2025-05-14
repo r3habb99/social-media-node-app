@@ -156,13 +156,54 @@ export const handleCreatePost = async (req: AuthRequest, res: Response) => {
       visibility: req.body.visibility || "public",
     };
 
+    // If this is a reply to another post, add the replyTo field
+    if (req.body.replyTo) {
+      (postData as any).replyTo = req.body.replyTo as string;
+      logger.info(`Creating reply to post: ${req.body.replyTo}`);
+    }
+
     const newPost = await createPost(postData);
-    logger.info("Post created successfully with media");
+
+    // Log appropriate message based on whether it's a reply or a regular post
+    if (req.body.replyTo) {
+      logger.info(`Reply created successfully to post: ${req.body.replyTo}`);
+    } else {
+      logger.info("Post created successfully");
+    }
+
+    // Send notification to the original post author if this is a reply
+    if (req.body.replyTo && newPost) {
+      try {
+        // Get the original post to find its owner
+        const originalPost = await getPostById(req.body.replyTo);
+
+        if (originalPost && originalPost.postedBy && originalPost.postedBy._id) {
+          const postOwnerId = originalPost.postedBy._id.toString();
+
+          // Don't send notification if the user is replying to their own post
+          if (postOwnerId !== req.user!.id) {
+            // Create notification
+            await createNotification(
+              postOwnerId,
+              req.user!.id,
+              NotificationTypes.REPLY,
+              req.body.replyTo,
+              req.body.content ? (req.body.content.substring(0, 50) + (req.body.content.length > 50 ? '...' : '')) : 'replied to your post'
+            );
+
+            logger.info(`Reply notification sent to user ${postOwnerId}`);
+          }
+        }
+      } catch (notificationError) {
+        // Log error but don't fail the post creation
+        logger.error("Error sending reply notification:", notificationError);
+      }
+    }
 
     return sendResponse({
       res,
       statusCode: HttpStatusCodes.CREATED,
-      message: "Post created successfully",
+      message: req.body.replyTo ? "Reply created successfully" : "Post created successfully",
       data: newPost,
     });
   } catch (error) {

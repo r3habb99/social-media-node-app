@@ -94,6 +94,11 @@ export const postRoutes = {
                   },
                   description: "Media files to upload (images/videos)"
                 },
+                replyTo: {
+                  type: "string",
+                  description: "ID of the post this is a reply to (for creating replies)",
+                  example: "64a1b2c3d4e5f6a7b8c9d0e1"
+                },
                 visibility: {
                   type: "string",
                   enum: ["public", "private", "followers"],
@@ -109,7 +114,7 @@ export const postRoutes = {
               content: "This is a post",
               media: ["http://example.com/image.jpg"],
               visibility: "public",
-              isReply: false
+              replyTo: "64a1b2c3d4e5f6a7b8c9d0e1" // Optional: ID of the post this is a reply to
             },
           },
         },
