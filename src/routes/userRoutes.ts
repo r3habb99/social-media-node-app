@@ -34,7 +34,7 @@ const router = express.Router();
 
 router.post("/register", validate(registerSchema), register);
 router.post("/login", validate(loginSchema), loginUser);
-router.delete("/logout", authMiddleware, logoutUser);
+router.delete("/logout", logoutUser);
 
 router.put("/update", authMiddleware, updateUser);
 

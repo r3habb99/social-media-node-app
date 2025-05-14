@@ -53,10 +53,55 @@ export const userRoutes = {
     delete: {
       tags: ["User"],
       summary: "Logout a user",
-      security: [{ bearerAuth: [] }],
+      description: "Logs out a user by invalidating their token. You can directly input your token below.",
+      parameters: [
+        {
+          name: "token",
+          in: "query",
+          required: true,
+          schema: {
+            type: "string"
+          },
+          description: "JWT token (without 'Bearer' prefix)"
+        }
+      ],
       responses: {
-        "200": { description: "Logout successful" },
-        "401": { description: "Unauthorized" },
+        "200": {
+          description: "Logout successful",
+          content: {
+            "application/json": {
+              example: {
+                statusCode: 200,
+                message: "Success",
+                data: "User logged out successfully"
+              }
+            }
+          }
+        },
+        "400": {
+          description: "Bad Request - Token is missing or invalid",
+          content: {
+            "application/json": {
+              example: {
+                statusCode: 400,
+                message: "Bad Request",
+                data: "Token is required"
+              }
+            }
+          }
+        },
+        "401": {
+          description: "Unauthorized - Invalid token",
+          content: {
+            "application/json": {
+              example: {
+                statusCode: 401,
+                message: "Unauthorized",
+                error: "Invalid Token Found"
+              }
+            }
+          }
+        }
       },
     },
   },

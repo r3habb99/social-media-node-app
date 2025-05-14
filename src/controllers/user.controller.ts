@@ -178,17 +178,23 @@ export const loginUser = async (req: Request, res: Response) => {
 
 export const logoutUser = async (req: Request, res: Response) => {
   try {
-    const authHeader = req.header("Authorization");
-    if (!authHeader) {
-      return sendResponse({
-        res,
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        message: HttpResponseMessages.BAD_REQUEST,
-        data: "Token is required",
-      });
-    }
+    // Check for token in query parameter first (for Swagger testing)
+    let token = req.query.token as string;
 
-    const token = authHeader.split(" ")[1];
+    // If not in query, try to get from Authorization header
+    if (!token) {
+      const authHeader = req.header("Authorization");
+      if (!authHeader) {
+        return sendResponse({
+          res,
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          message: HttpResponseMessages.BAD_REQUEST,
+          data: "Token is required",
+        });
+      }
+
+      token = authHeader.split(" ")[1];
+    }
 
     if (!token) {
       return sendResponse({
