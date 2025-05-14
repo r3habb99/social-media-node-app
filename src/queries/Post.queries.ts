@@ -444,3 +444,215 @@ export const updatePost = async (
     return null;
   }
 };
+
+// Get Posts by User ID with Pagination
+export const getPostsByUserId = async (
+  userId: string,
+  paginationOptions?: {
+    max_id?: string;
+    since_id?: string;
+    limit?: number;
+    includeComments?: boolean;
+    includeReplies?: boolean;
+  }
+): Promise<{
+  posts: IPost[];
+  pagination: {
+    next_max_id?: string;
+    has_more: boolean;
+  };
+  totalCount: number;
+}> => {
+  try {
+    const limit = paginationOptions?.limit || 10; // Default limit is 10
+    const includeComments = paginationOptions?.includeComments !== undefined ? paginationOptions.includeComments : true;
+    const includeReplies = paginationOptions?.includeReplies !== undefined ? paginationOptions.includeReplies : false;
+
+    // Base query: get posts by this user that aren't deleted
+    let query: any = {
+      postedBy: new mongoose.Types.ObjectId(userId),
+      isDeleted: false
+    };
+
+    // If we don't want to include replies, add that to the query
+    if (!includeReplies) {
+      query.replyTo = { $exists: false };
+    }
+
+    // Apply cursor-based pagination filters
+    if (paginationOptions?.max_id) {
+      // Get posts older than max_id (going backwards in time)
+      const maxIdPost = await Post.findById(paginationOptions.max_id);
+      if (maxIdPost) {
+        query.createdAt = { $lt: maxIdPost.createdAt };
+      }
+    } else if (paginationOptions?.since_id) {
+      // Get posts newer than since_id (going forward in time)
+      const sinceIdPost = await Post.findById(paginationOptions.since_id);
+      if (sinceIdPost) {
+        query.createdAt = { $gt: sinceIdPost.createdAt };
+      }
+    }
+
+    // Get total count of all posts by this user (for profile stats)
+    const totalCount = await Post.countDocuments({
+      postedBy: new mongoose.Types.ObjectId(userId),
+      isDeleted: false,
+      // Only count non-replies if includeReplies is false
+      ...(includeReplies ? {} : { replyTo: { $exists: false } })
+    });
+
+    // Fetch one more post than requested to determine if there are more posts
+    const posts = await Post.find(query)
+      .populate("postedBy") // Populate the postedBy field (user data)
+      .populate({
+        path: "retweetData",
+        populate: [
+          { path: "postedBy" },
+          { path: "replyTo" }
+        ]
+      })
+      .populate("replyTo")
+      .sort({ createdAt: -1 })
+      .limit(limit + 1) // Fetch one extra to check if there are more
+      .exec();
+
+    // Check if there are more posts
+    const hasMore = posts.length > limit;
+    // Remove the extra post if there are more
+    const paginatedPosts = hasMore ? posts.slice(0, limit) : posts;
+
+    // Get the next_max_id (the ID of the last post in the current set)
+    const nextMaxId = paginatedPosts.length > 0 ? paginatedPosts[paginatedPosts.length - 1]._id?.toString() : undefined;
+
+    // Transform media URLs to full URLs and include comments if requested
+    const transformedPosts = await transformPostsMediaUrls(paginatedPosts || [], includeComments);
+
+    return {
+      posts: transformedPosts,
+      pagination: {
+        next_max_id: hasMore ? nextMaxId : undefined,
+        has_more: hasMore
+      },
+      totalCount
+    };
+  } catch (error) {
+    logger.error(`Error fetching posts by user ID: ${error}`);
+    return {
+      posts: [],
+      pagination: {
+        has_more: false
+      },
+      totalCount: 0
+    }; // Return empty array in case of error
+  }
+};
+
+// Get Replies to User's Posts
+export const getRepliesForUserPosts = async (
+  userId: string,
+  paginationOptions?: {
+    max_id?: string;
+    since_id?: string;
+    limit?: number;
+    includeComments?: boolean;
+  }
+): Promise<{
+  replies: IPost[];
+  pagination: {
+    next_max_id?: string;
+    has_more: boolean;
+  };
+  totalCount: number;
+}> => {
+  try {
+    const limit = paginationOptions?.limit || 10; // Default limit is 10
+    const includeComments = paginationOptions?.includeComments !== undefined ? paginationOptions.includeComments : true;
+
+    // First, get all post IDs by this user
+    const userPostIds = await Post.find({
+      postedBy: new mongoose.Types.ObjectId(userId),
+      isDeleted: false
+    }).select('_id').lean();
+
+    // If user has no posts, return empty result
+    if (!userPostIds || userPostIds.length === 0) {
+      return {
+        replies: [],
+        pagination: {
+          has_more: false
+        },
+        totalCount: 0
+      };
+    }
+
+    // Extract just the IDs
+    const postIds = userPostIds.map(post => post._id);
+
+    // Base query: get all replies to this user's posts that aren't deleted
+    let query: any = {
+      replyTo: { $in: postIds },
+      isDeleted: false,
+      // Exclude the user's own replies to their posts
+      postedBy: { $ne: new mongoose.Types.ObjectId(userId) }
+    };
+
+    // Apply cursor-based pagination filters
+    if (paginationOptions?.max_id) {
+      // Get posts older than max_id (going backwards in time)
+      const maxIdPost = await Post.findById(paginationOptions.max_id);
+      if (maxIdPost) {
+        query.createdAt = { $lt: maxIdPost.createdAt };
+      }
+    } else if (paginationOptions?.since_id) {
+      // Get posts newer than since_id (going forward in time)
+      const sinceIdPost = await Post.findById(paginationOptions.since_id);
+      if (sinceIdPost) {
+        query.createdAt = { $gt: sinceIdPost.createdAt };
+      }
+    }
+
+    // Get total count of all replies to this user's posts
+    const totalCount = await Post.countDocuments(query);
+
+    // Fetch one more reply than requested to determine if there are more
+    const replies = await Post.find(query)
+      .populate("postedBy") // Populate the postedBy field (user data)
+      .populate({
+        path: "replyTo",
+        populate: { path: "postedBy" }
+      })
+      .sort({ createdAt: -1 })
+      .limit(limit + 1) // Fetch one extra to check if there are more
+      .exec();
+
+    // Check if there are more replies
+    const hasMore = replies.length > limit;
+    // Remove the extra reply if there are more
+    const paginatedReplies = hasMore ? replies.slice(0, limit) : replies;
+
+    // Get the next_max_id (the ID of the last reply in the current set)
+    const nextMaxId = paginatedReplies.length > 0 ? paginatedReplies[paginatedReplies.length - 1]._id?.toString() : undefined;
+
+    // Transform media URLs to full URLs and include comments if requested
+    const transformedReplies = await transformPostsMediaUrls(paginatedReplies || [], includeComments);
+
+    return {
+      replies: transformedReplies,
+      pagination: {
+        next_max_id: hasMore ? nextMaxId : undefined,
+        has_more: hasMore
+      },
+      totalCount
+    };
+  } catch (error) {
+    logger.error(`Error fetching replies to user's posts: ${error}`);
+    return {
+      replies: [],
+      pagination: {
+        has_more: false
+      },
+      totalCount: 0
+    }; // Return empty array in case of error
+  }
+};

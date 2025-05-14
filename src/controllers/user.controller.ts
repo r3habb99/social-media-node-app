@@ -16,6 +16,7 @@ import {
   createUser,
   getUser,
   getUserById,
+  getUserProfileWithStats,
   removeToken,
   saveToken,
   searchUser,
@@ -343,3 +344,61 @@ export const getUserID = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * Get user profile with comprehensive stats and paginated posts, replies, likes, and media
+ */
+export const getUserProfileWithPostStats = async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    // Extract pagination and filtering parameters
+    const {
+      max_id,
+      since_id,
+      limit,
+      content_type, // 'posts', 'replies', 'likes', 'media'
+      include_comments
+    } = req.query;
+
+    // Create pagination options
+    const paginationOptions = {
+      max_id: max_id as string | undefined,
+      since_id: since_id as string | undefined,
+      limit: limit ? parseInt(limit as string, 10) : 10, // Default to 10 items per page
+      contentType: (content_type as string) || 'posts', // Default to posts if not specified
+      includeComments: include_comments === 'false' ? false : true, // Default to true if not specified
+    };
+
+    // Get user profile with stats and paginated content
+    const result = await getUserProfileWithStats(userId, paginationOptions);
+
+    if (!result.user) {
+      logger.error("❌ User not found");
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        message: HttpResponseMessages.NOT_FOUND,
+        data: "User not found",
+      });
+    }
+
+    logger.info(`✅ User Profile with Stats Retrieved Successfully (content type: ${paginationOptions.contentType})`);
+    return sendResponse({
+      res,
+      statusCode: HttpStatusCodes.OK,
+      message: HttpResponseMessages.SUCCESS,
+      data: result,
+    });
+  } catch (error) {
+    logger.error("Error in getUserProfileWithPostStats controller:", error);
+    return sendResponse({
+      res,
+      statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
+      error,
+    });
+  }
+};
+
+

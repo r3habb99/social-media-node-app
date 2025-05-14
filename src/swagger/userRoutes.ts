@@ -284,6 +284,104 @@ export const userRoutes = {
       },
     },
   },
+  "/api/user/{userId}/stats": {
+    get: {
+      tags: ["User"],
+      summary: "Get user profile with comprehensive stats and paginated content",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "userId",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+          description: "ID of the user",
+        },
+        {
+          name: "max_id",
+          in: "query",
+          required: false,
+          schema: { type: "string" },
+          description: "Get content older than this ID (cursor-based pagination)",
+        },
+        {
+          name: "since_id",
+          in: "query",
+          required: false,
+          schema: { type: "string" },
+          description: "Get content newer than this ID (cursor-based pagination)",
+        },
+        {
+          name: "limit",
+          in: "query",
+          required: false,
+          schema: { type: "integer", default: 10 },
+          description: "Number of items to return per page (default: 10)",
+        },
+        {
+          name: "content_type",
+          in: "query",
+          required: false,
+          schema: {
+            type: "string",
+            enum: ["posts", "replies", "likes", "media"],
+            default: "posts"
+          },
+          description: "Type of content to retrieve: posts, replies, likes, or media (default: posts)",
+        },
+        {
+          name: "include_comments",
+          in: "query",
+          required: false,
+          schema: { type: "boolean", default: true },
+          description: "Whether to include comment counts in the response (default: true)",
+        },
+      ],
+      responses: {
+        "200": {
+          description: "User profile with stats and paginated content retrieved successfully",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  user: { $ref: "#/components/schemas/User" },
+                  stats: {
+                    type: "object",
+                    properties: {
+                      postCount: { type: "integer" },
+                      repliesCount: { type: "integer" },
+                      receivedRepliesCount: { type: "integer" },
+                      likesCount: { type: "integer" },
+                      mediaCount: { type: "integer" }
+                    }
+                  },
+                  content: {
+                    type: "object",
+                    properties: {
+                      items: {
+                        type: "array",
+                        items: { $ref: "#/components/schemas/Post" }
+                      },
+                      pagination: {
+                        type: "object",
+                        properties: {
+                          next_max_id: { type: "string" },
+                          has_more: { type: "boolean" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "404": { description: "User not found" },
+      },
+    },
+  },
+
   "/api/user/reset-password": {
     put: {
       tags: ["User"],
