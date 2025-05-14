@@ -48,6 +48,11 @@ const transformPostMediaUrls = async (post: IPost | null, includeComments: boole
     if (postObj.replyTo.postedBy && postObj.replyTo.postedBy.profilePic) {
       postObj.replyTo.postedBy.profilePic = getFullMediaUrl(postObj.replyTo.postedBy.profilePic);
     }
+
+    // Ensure username is available for display in the UI
+    if (postObj.replyTo.postedBy && !postObj.replyTo.postedBy.username) {
+      logger.warn('Username missing in replyTo.postedBy, this should not happen with proper population');
+    }
   }
 
   // Add comment count to the post
@@ -145,7 +150,10 @@ export const getPosts = async (
           { path: "replyTo" }
         ]
       })
-      .populate("replyTo")
+      .populate({
+        path: "replyTo",
+        populate: { path: "postedBy" } // Ensure postedBy is populated within replyTo
+      })
       .sort({ createdAt: -1 })
       .limit(limit + 1) // Fetch one extra to check if there are more
       .exec();
@@ -190,7 +198,10 @@ export const getPostById = async (postId: string, includeComments: boolean = tru
           { path: "replyTo" }
         ]
       })
-      .populate("replyTo")
+      .populate({
+        path: "replyTo",
+        populate: { path: "postedBy" } // Ensure postedBy is populated within replyTo
+      })
       .exec();
 
     // Transform media URLs to full URLs and add comments if requested
@@ -231,7 +242,10 @@ export const toggleLikePost = async (
     )
     .populate("postedBy") // Populate postedBy with user data for username
     .populate("retweetData")
-    .populate("replyTo");
+    .populate({
+      path: "replyTo",
+      populate: { path: "postedBy" } // Ensure postedBy is populated within replyTo
+    });
 
     // Also update the user's likes array to maintain consistency
     await User.findByIdAndUpdate(
@@ -435,7 +449,10 @@ export const updatePost = async (
     const updatedPost = await Post.findById(postId)
       .populate("postedBy")
       .populate("retweetData")
-      .populate("replyTo");
+      .populate({
+        path: "replyTo",
+        populate: { path: "postedBy" } // Ensure postedBy is populated within replyTo
+      });
 
     // Transform media URLs to full URLs and add comment count
     return await transformPostMediaUrls(updatedPost, false);
@@ -512,7 +529,10 @@ export const getPostsByUserId = async (
           { path: "replyTo" }
         ]
       })
-      .populate("replyTo")
+      .populate({
+        path: "replyTo",
+        populate: { path: "postedBy" } // Ensure postedBy is populated within replyTo
+      })
       .sort({ createdAt: -1 })
       .limit(limit + 1) // Fetch one extra to check if there are more
       .exec();
@@ -621,6 +641,13 @@ export const getRepliesForUserPosts = async (
       .populate({
         path: "replyTo",
         populate: { path: "postedBy" }
+      })
+      .populate({
+        path: "retweetData",
+        populate: [
+          { path: "postedBy" },
+          { path: "replyTo" }
+        ]
       })
       .sort({ createdAt: -1 })
       .limit(limit + 1) // Fetch one extra to check if there are more

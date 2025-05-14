@@ -276,7 +276,10 @@ export const getUserProfileWithStats = async (
           { path: "replyTo" }
         ]
       })
-      .populate("replyTo")
+      .populate({
+        path: "replyTo",
+        populate: { path: "postedBy" } // Ensure postedBy is populated within replyTo
+      })
       .sort({ createdAt: -1 })
       .limit(limit + 1) // Fetch one extra to check if there are more
       .exec();
