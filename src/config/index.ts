@@ -1,5 +1,7 @@
 import { config } from "dotenv";
 config({ path: ".env" });
+
+// Export environment variables
 export const {
   MONGO_URI,
   SERVER_URL,
@@ -12,3 +14,8 @@ export const {
   EMAIL_USER,
   EMAIL_PASS
 } = process.env;
+
+// Export configuration modules
+export * from "./middleware";
+export * from "./staticFiles";
+export * from "./routes";
