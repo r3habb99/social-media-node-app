@@ -1,3 +1,5 @@
+import { SERVER_BASE_URL } from "../constants/urls";
+
 /**
  * Base Swagger configuration
  */
@@ -10,8 +12,8 @@ export const swaggerConfig = {
   },
   servers: [
     {
-      url: "http://localhost:5050/",
-      description: "Local server",
+      url: `${SERVER_BASE_URL}/`,
+      description: "Server",
     },
   ],
   components: {

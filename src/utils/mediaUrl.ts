@@ -1,4 +1,4 @@
-import { HOST, PORT } from "../config";
+import { SERVER_BASE_URL } from "../constants/urls";
 
 /**
  * Generates a full URL for media files
@@ -11,16 +11,6 @@ export const getFullMediaUrl = (relativePath: string): string => {
     return relativePath;
   }
 
-  // Get the backend URL from environment variables
-  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-  const host = HOST || 'localhost';
-  const port = PORT || '5050';
-
-  // For production, you might not want to include the port in the URL
-  const baseUrl = process.env.NODE_ENV === 'production'
-    ? `${protocol}://${host}`
-    : `${protocol}://${host}:${port}`;
-
   // Ensure the relativePath starts with a slash and doesn't include /api
   let path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
 
@@ -29,5 +19,5 @@ export const getFullMediaUrl = (relativePath: string): string => {
     path = path.substring(4); // Remove the /api prefix
   }
 
-  return `${baseUrl}${path}`;
+  return `${SERVER_BASE_URL}${path}`;
 };

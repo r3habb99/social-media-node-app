@@ -19,6 +19,8 @@ import { initializeSocket } from "./socket";
 import { setupSwagger } from "./swagger";
 // Importing routes
 import indexRoutes from "./routes/indexRoutes";
+// Import URL constants
+import { ALLOWED_ORIGINS, SERVER_BASE_URL, API_BASE_URL } from "./constants/urls";
 
 const app = express();
 setupSwagger(app);
@@ -42,7 +44,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Configure CORS for all routes
 app.use(cors({
-  origin: '*', // Allow all origins
+  origin: ALLOWED_ORIGINS, // Use allowed origins from constants
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
@@ -65,7 +67,16 @@ app.use("/public", (req, res, next) => {
 app.use("/uploads", (req, res, next) => {
   // Set comprehensive CORS headers
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  // Set Access-Control-Allow-Origin based on the request origin
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    // Fallback to the first allowed origin if the request origin is not in the allowed list
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGINS[0]);
+  }
+
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
   res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Authorization');
   next();
@@ -121,32 +132,39 @@ const io = initializeSocket(httpServer);
 import { setSocketInstance } from "./services/notificationService";
 setSocketInstance(io);
 
-export const startServer = () => {
+export const startServer = async () => {
   try {
-    connectDB(); // Connect to MongoDB
+    // Connect to MongoDB
+    logger.info('Connecting to MongoDB database...');
+    await connectDB();
+    logger.info('Database connection established successfully');
+
+    // Parse port number
     const portNumber = PORT ? parseInt(PORT, 10) : NaN;
     if (isNaN(portNumber)) {
-      logger.error("❌ Invalid PORT number:", PORT);
+      logger.error("Invalid PORT number. Please check your environment variables.");
       process.exit(1);
     }
-    if (HOST) {
-      logger.info(`===============================================`);
-      logger.info(`http://${HOST}:${PORT}/api`);
-    } else {
-      logger.warn("HOST is not defined, unable to log the URL.");
-    }
 
+    // Start HTTP server
     httpServer.listen(portNumber, () => {
-      logger.info("✅ Database Connected Successfully....");
-      logger.info(`Chat-Service Server is running on port ${PORT}`);
-      logger.info(`===============================================`);
+      // Log server information
+      logger.info('===============================================');
+      logger.info(`Environment: ${NODE_ENV || 'development'}`);
+      logger.info(`Server URL: ${SERVER_BASE_URL}`);
+      logger.info(`API URL: ${API_BASE_URL}`);
+      logger.info(`Port: ${PORT}`);
+      logger.info(`Swagger Docs: ${SERVER_BASE_URL}/api-docs`);
+      logger.info('===============================================');
     });
   } catch (error) {
     if (error instanceof Error) {
-      logger.error("❌ Error starting the server:", error.message);
-      logger.error(error.stack);
+      logger.error(`Server startup failed: ${error.message}`);
+      if (error.stack) {
+        logger.error(`Stack trace: ${error.stack}`);
+      }
     } else {
-      logger.error("❌ Error starting the server:", error);
+      logger.error(`Server startup failed with unknown error: ${error}`);
     }
     process.exit(1); // Exit process on failure
   }

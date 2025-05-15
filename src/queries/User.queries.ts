@@ -1,4 +1,4 @@
-import { SERVER_URL } from "../config";
+import { SERVER_BASE_URL } from "../constants/urls";
 import { User, Post } from "../entities";
 import { IUser } from "../interfaces";
 import { logger } from "../services";
@@ -304,14 +304,14 @@ export const getUserProfileWithStats = async (
         postObj.media = postObj.media.map((url: string) => {
           // Check if the URL already starts with http
           if (url.startsWith('http')) return url;
-          return `${SERVER_URL}${url}`;
+          return `${SERVER_BASE_URL}${url}`;
         });
       }
 
       // Transform profile picture URL of the user who posted
       if (postObj.postedBy && typeof postObj.postedBy === 'object' && 'profilePic' in postObj.postedBy) {
         if (typeof postObj.postedBy.profilePic === 'string' && !postObj.postedBy.profilePic.startsWith('http')) {
-          postObj.postedBy.profilePic = `${SERVER_URL}${postObj.postedBy.profilePic}`;
+          postObj.postedBy.profilePic = `${SERVER_BASE_URL}${postObj.postedBy.profilePic}`;
         }
       }
 
@@ -320,7 +320,7 @@ export const getUserProfileWithStats = async (
         const retweetData = postObj.retweetData as any;
         if (retweetData.postedBy && typeof retweetData.postedBy === 'object') {
           if (retweetData.postedBy.profilePic && !retweetData.postedBy.profilePic.startsWith('http')) {
-            retweetData.postedBy.profilePic = `${SERVER_URL}${retweetData.postedBy.profilePic}`;
+            retweetData.postedBy.profilePic = `${SERVER_BASE_URL}${retweetData.postedBy.profilePic}`;
           }
         }
       }
@@ -330,7 +330,7 @@ export const getUserProfileWithStats = async (
         const replyTo = postObj.replyTo as any;
         if (replyTo.postedBy && typeof replyTo.postedBy === 'object') {
           if (replyTo.postedBy.profilePic && !replyTo.postedBy.profilePic.startsWith('http')) {
-            replyTo.postedBy.profilePic = `${SERVER_URL}${replyTo.postedBy.profilePic}`;
+            replyTo.postedBy.profilePic = `${SERVER_BASE_URL}${replyTo.postedBy.profilePic}`;
           }
         }
       }

@@ -4,9 +4,13 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "tsc && ts-node src/server.ts",
-    "build": "tsc"
+    "start": "node dist/server.js",
+    "dev": "cross-env NODE_ENV=development nodemon",
+    "dev:watch": "concurrently --prefix \"\" --no-color \"npm run watch\" \"npm run dev\"",
+    "build": "tsc",
+    "prod": "cross-env NODE_ENV=production node dist/server.js",
+    "build:prod": "cross-env NODE_ENV=production npm run build && npm run prod",
+    "watch": "tsc -w"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +29,8 @@
     "@types/swagger-ui-express": "^4.1.8",
     "@types/uuid": "^10.0.0",
     "@types/validator": "^13.12.2",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   },
@@ -51,6 +57,7 @@
     "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.21",
     "uuid": "^11.1.0",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
   }
 }

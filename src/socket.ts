@@ -3,6 +3,7 @@ import { Server, Socket } from "socket.io";
 import { logger } from "./services";
 import { saveMessage, markMessageAsRead, getMessages } from "./queries";
 import { Chat } from "./entities";
+import { ALLOWED_ORIGINS } from "./constants/urls";
 
 
 // Interface for socket user data
@@ -36,19 +37,12 @@ export const emitNotification = (io: Server, userId: string, notification: any) 
   } catch (error) {
     logger.error(`Error sending notification to user ${userId}:`, error);
     return false;
-  }
-};
+  }};
 
 export const initializeSocket = (httpServer: HTTPServer): Server => {
   const io = new Server(httpServer, {
     cors: {
-      origin: [
-        "http://192.168.0.88:3000",
-        "http://192.168.1.9:3000",
-        "http://localhost:3000",
-        "http://localhost:5050",
-        "http://192.168.1.7:5050",
-      ],
+      origin: ALLOWED_ORIGINS,
       methods: ["GET", "POST"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,
