@@ -45,7 +45,8 @@ export const uploadProfilePic = async (req: AuthRequest, res: Response) => {
     const imageUrl = `/uploads/profile-pictures/${req.file.filename}`;
     logger.info(`Image URL to be saved: ${imageUrl}`);
 
-    // Update the user's profile picture in the database
+    // Update the user's profile picture in the database (previous file will be deleted)
+    logger.info(`Updating profile picture for user ${userId} (previous file will be deleted if exists)`);
     const user = await updateUserImage(userId, "profilePic", imageUrl);
 
     if (!user) {
@@ -161,7 +162,8 @@ export const uploadCoverPhoto = async (req: AuthRequest, res: Response) => {
     const coverPhotoUrl = `/uploads/cover-photos/${req.file.filename}`;
     logger.info(`Cover photo URL to be saved: ${coverPhotoUrl}`);
 
-    // Update the user's cover photo in the database
+    // Update the user's cover photo in the database (previous file will be deleted)
+    logger.info(`Updating cover photo for user ${userId} (previous file will be deleted if exists)`);
     const user = await updateUserImage(userId, "coverPhoto", coverPhotoUrl);
 
     if (!user) {

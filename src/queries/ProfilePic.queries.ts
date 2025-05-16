@@ -1,6 +1,7 @@
 import { User } from "../entities";
 import { logger } from "../services";
 import { transformUserMediaUrls } from "../utils/userMediaUrl";
+import { deleteFile, isDefaultAsset } from "../utils/fileSystem";
 
 // Update Profile Picture or Cover Photo
 export const updateUserImage = async (
@@ -24,6 +25,20 @@ export const updateUserImage = async (
     if (!userExists) {
       logger.error(`User with ID ${userId} not found`);
       return null;
+    }
+
+    // Get the current image URL before updating
+    const currentImageUrl = userExists[field];
+
+    // Delete the previous image file if it exists and is not a default asset
+    if (currentImageUrl && !isDefaultAsset(currentImageUrl)) {
+      logger.info(`Deleting previous ${field} file: ${currentImageUrl}`);
+      const deleted = deleteFile(currentImageUrl);
+      if (deleted) {
+        logger.info(`Successfully deleted previous ${field} file`);
+      } else {
+        logger.warn(`Failed to delete previous ${field} file or file not found`);
+      }
     }
 
     // Update the user document
