@@ -124,14 +124,13 @@ export const handleCreatePost = async (req: AuthRequest, res: Response) => {
       logger.info(`Found ${files.length} uploaded files`);
       logger.info(`Request URL: ${req.url}, Original URL: ${req.originalUrl}`);
 
-      // Generate URLs for each uploaded file
+      // Generate relative paths for each uploaded file
       files.forEach(file => {
         // Check if the file is in the post-media directory or others directory
         const directory = file.destination.includes('post-media') ? 'post-media' : 'others';
         const relativePath = `/uploads/${directory}/${file.filename}`;
-        const mediaUrl = getFullMediaUrl(relativePath);
-        mediaUrls.push(mediaUrl);
-        logger.info(`Added media URL: ${mediaUrl} for file: ${file.filename}`);
+        mediaUrls.push(relativePath);
+        logger.info(`Added relative media path: ${relativePath} for file: ${file.filename}`);
       });
 
       logger.info(`Processed ${mediaUrls.length} media files for post`);
@@ -371,14 +370,13 @@ export const handleUpdatePost = async (req: AuthRequest, res: Response) => {
       const files = req.files as Express.Multer.File[];
       logger.info(`Found ${files.length} uploaded files for update`);
 
-      // Generate URLs for each uploaded file
+      // Generate relative paths for each uploaded file
       files.forEach(file => {
         // Check if the file is in the post-media directory or others directory
         const directory = file.destination.includes('post-media') ? 'post-media' : 'others';
         const relativePath = `/uploads/${directory}/${file.filename}`;
-        const mediaUrl = getFullMediaUrl(relativePath);
-        mediaUrls.push(mediaUrl);
-        logger.info(`Added media URL: ${mediaUrl} for file: ${file.filename}`);
+        mediaUrls.push(relativePath);
+        logger.info(`Added relative media path: ${relativePath} for file: ${file.filename}`);
       });
 
       logger.info(`Processed ${mediaUrls.length} media files for post update`);
