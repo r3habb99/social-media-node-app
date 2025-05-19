@@ -25,6 +25,10 @@ const NotificationSchema = new Schema<INotification>(
       type: Schema.Types.ObjectId,
       required: true,
     },
+    message: {
+      type: String,
+      default: "",
+    },
     createdAt: {
       type: Date,
       default: Date.now,
@@ -55,11 +59,12 @@ NotificationSchema.statics.insertNotification = async function (
   userTo: mongoose.Types.ObjectId,
   userFrom: mongoose.Types.ObjectId,
   notificationType: string,
-  entityId: mongoose.Types.ObjectId
+  entityId: mongoose.Types.ObjectId,
+  message?: string
 ): Promise<INotification | null> {
   try {
-    const data = { userTo, userFrom, notificationType, entityId };
-    await this.deleteOne(data);
+    const data = { userTo, userFrom, notificationType, entityId, message };
+    await this.deleteOne({ userTo, userFrom, notificationType, entityId });
     return await this.create(data);
   } catch (error) {
     console.error("Error inserting notification:", error);

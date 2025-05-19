@@ -29,6 +29,10 @@ export const notificationSchema = {
         type: "string",
         description: "ID of the entity this notification is about (post, comment, etc.)",
       },
+      message: {
+        type: "string",
+        description: "Descriptive message about the notification (e.g., 'John has liked your post')",
+      },
       createdAt: {
         type: "string",
         format: "date-time",

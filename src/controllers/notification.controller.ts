@@ -135,3 +135,72 @@ export const handleMarkAllNotificationsAsOpened = async (
     });
   }
 };
+
+/**
+ * Get a notification by ID
+ */
+export const handleGetNotificationById = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user!.id;
+
+    if (!id) {
+      logger.error("Notification ID is required");
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: HttpResponseMessages.BAD_REQUEST,
+        data: "Notification ID is required",
+      });
+    }
+
+    const notification = await getNotificationById(id);
+
+    if (!notification) {
+      logger.error(`Notification with ID ${id} not found`);
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        message: HttpResponseMessages.NOT_FOUND,
+        data: "Notification not found",
+      });
+    }
+
+    // Check if the user is authorized to view this notification
+    // Handle both cases: when userTo is populated (object) or just an ID
+    const notificationUserToId = notification.userTo && typeof notification.userTo === 'object'
+      ? notification.userTo._id
+      : notification.userTo;
+
+    if (String(notificationUserToId) !== String(currentUserId)) {
+      logger.warn(
+        `⚠️ Unauthorized attempt by user ${currentUserId} to access notification ${id}`
+      );
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.FORBIDDEN,
+        message: HttpResponseMessages.FORBIDDEN,
+        data: "You are not authorized to view this notification",
+      });
+    }
+
+    logger.info(`Notification ${id} retrieved successfully`);
+    return sendResponse({
+      res,
+      statusCode: HttpStatusCodes.OK,
+      message: HttpResponseMessages.SUCCESS,
+      data: notification,
+    });
+  } catch (error) {
+    logger.error(`❌ Error in getNotificationById: ${error}`);
+    return sendResponse({
+      res,
+      statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
+      error: error,
+    });
+  }
+};

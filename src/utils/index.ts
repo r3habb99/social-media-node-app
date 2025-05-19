@@ -3,4 +3,5 @@ export * from './chatMediaUrl';
 export * from './mediaUrl';
 export * from './messageMediaUrl';
 export * from './userMediaUrl';
+export * from './notificationMediaUrl';
 export * from './fileSystem';

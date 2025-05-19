@@ -33,6 +33,28 @@ export const notificationRoutes = {
       },
     },
   },
+  "/api/notification/{id}": {
+    get: {
+      tags: ["Notification"],
+      summary: "Get a specific notification by ID",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+          description: "ID of the notification to retrieve",
+        },
+      ],
+      responses: {
+        "200": { description: "Notification details" },
+        "403": { description: "Unauthorized access" },
+        "404": { description: "Notification not found" },
+        "500": { description: "Internal server error" },
+      },
+    },
+  },
   "/api/notification/{id}/markAsOpened": {
     put: {
       tags: ["Notification"],
@@ -48,8 +70,10 @@ export const notificationRoutes = {
         },
       ],
       responses: {
-        "200": { description: "Notification marked as opened" },
+        "204": { description: "Notification marked as opened" },
+        "403": { description: "Unauthorized access" },
         "404": { description: "Notification not found" },
+        "500": { description: "Internal server error" },
       },
     },
   },

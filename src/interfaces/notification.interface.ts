@@ -6,6 +6,7 @@ export interface INotification extends Document {
   notificationType?: string;
   opened?: boolean;
   entityId?: mongoose.Types.ObjectId;
+  message?: string;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
@@ -16,8 +17,8 @@ export interface INotificationModel extends Model<INotification> {
     userTo?: mongoose.Types.ObjectId,
     userFrom?: mongoose.Types.ObjectId,
     notificationType?: string,
-    entityId?: mongoose.Types.ObjectId
+    entityId?: mongoose.Types.ObjectId,
+    message?: string
   ): Promise<INotification | null>;
 }
 
- 

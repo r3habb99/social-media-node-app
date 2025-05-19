@@ -36,12 +36,62 @@ export const createNotification = async (
       return false;
     }
 
-    // Create database notification
+    // Generate a message based on notification type
+    let message = '';
+
+    // Get user data for the notification message
+    const userFrom = await getUserById(userFromId);
+    if (!userFrom) {
+      logger.error(`User ${userFromId} not found for notification`);
+      return false;
+    }
+
+    const username = userFrom.firstName && userFrom.lastName
+      ? `${userFrom.firstName} ${userFrom.lastName}`
+      : userFrom.username;
+
+    // Generate appropriate message based on notification type
+    switch (notificationType) {
+      case NotificationTypes.FOLLOW:
+        message = `${username} has followed you`;
+        break;
+
+      case NotificationTypes.LIKE:
+        message = `${username} has liked your post`;
+        if (content) {
+          message += `: "${content.length > 30 ? content.substring(0, 30) + '...' : content}"`;
+        }
+        break;
+
+      case NotificationTypes.COMMENT:
+        message = `${username} has commented on your post`;
+        if (content) {
+          message += `: "${content.length > 30 ? content.substring(0, 30) + '...' : content}"`;
+        }
+        break;
+
+      case NotificationTypes.REPLY:
+        message = `${username} has replied to your post`;
+        if (content) {
+          message += `: "${content.length > 30 ? content.substring(0, 30) + '...' : content}"`;
+        }
+        break;
+
+      case NotificationTypes.RETWEET:
+        message = `${username} has retweeted your post`;
+        break;
+
+      default:
+        message = `You have a new ${notificationType} notification from ${username}`;
+    }
+
+    // Create database notification with message
     const notification = await insertNotification(
       new mongoose.Types.ObjectId(userToId),
       new mongoose.Types.ObjectId(userFromId),
       notificationType,
-      new mongoose.Types.ObjectId(entityId)
+      new mongoose.Types.ObjectId(entityId),
+      message
     );
 
     logger.info(`Created ${notificationType} notification for user ${userToId}`);
@@ -61,6 +111,7 @@ export const createNotification = async (
         const notificationData: any = {
           id: notification?.id || entityId,
           type: notificationType,
+          message: message, // Include the descriptive message
           userFrom: {
             id: userFromId,
             name: userFrom.firstName + ' ' + userFrom.lastName,
