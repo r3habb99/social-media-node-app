@@ -34,6 +34,10 @@ export const userSchema = {
         type: "string",
         description: "URL to user's cover photo",
       },
+      bio: {
+        type: "string",
+        description: "User's bio (limited to 160 characters)",
+      },
       following: {
         type: "array",
         items: {

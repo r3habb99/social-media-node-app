@@ -37,6 +37,11 @@ const UserSchema = new Schema<IUser>(
     coverPhoto: {
       type: String,
     },
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: [160, "Bio cannot exceed 160 characters"], // Twitter-like bio character limit
+    },
     likes: [
       {
         type: Schema.Types.ObjectId,

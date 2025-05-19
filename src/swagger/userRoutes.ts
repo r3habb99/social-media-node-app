@@ -119,6 +119,7 @@ export const userRoutes = {
               firstName: "Updated",
               lastName: "Name",
               username: "updatedusername",
+              bio: "Software developer | Coffee enthusiast | Travel lover",
             },
           },
         },

@@ -10,6 +10,7 @@ export interface IUser extends Document {
   password?: string;
   profilePic?: string;
   coverPhoto?: string;
+  bio?: string; 
   likes?: mongoose.Types.ObjectId[];
   retweets?: mongoose.Types.ObjectId[];
   following?: mongoose.Types.ObjectId[];

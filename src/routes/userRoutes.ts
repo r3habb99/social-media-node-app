@@ -28,6 +28,7 @@ import {
   registerSchema,
   resetPasswordSchema,
   searchUserSchema,
+  updateUserSchema,
 } from "../validations";
 
 const router = express.Router();
@@ -36,7 +37,7 @@ router.post("/register", validate(registerSchema), register);
 router.post("/login", validate(loginSchema), loginUser);
 router.delete("/logout", logoutUser);
 
-router.put("/update", authMiddleware, updateUser);
+router.put("/update", authMiddleware, validate(updateUserSchema), updateUser);
 
 router.get("/", authMiddleware, fetchUser);
 // Search users

@@ -38,6 +38,11 @@ export const schemas = {
       username: { type: "string" },
       email: { type: "string", format: "email" },
       password: { type: "string" },
+      bio: {
+        type: "string",
+        description: "User's bio (max 160 characters)",
+        example: "Software developer | Coffee enthusiast | Travel lover"
+      },
     },
   },
   UserProfile: {
@@ -50,6 +55,7 @@ export const schemas = {
       email: { type: "string", format: "email" },
       profilePic: { type: "string" },
       coverPhoto: { type: "string" },
+      bio: { type: "string" },
       following: { type: "array", items: { type: "string" } },
       followers: { type: "array", items: { type: "string" } },
     },

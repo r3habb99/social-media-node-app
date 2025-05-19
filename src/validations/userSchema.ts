@@ -67,3 +67,38 @@ export const loginSchema = Joi.object({
     "any.required": "Password is required.",
   }),
 });
+
+export const updateUserSchema = Joi.object({
+  firstName: Joi.string().min(2).max(50).optional().messages({
+    "string.base": "First name must be a string.",
+    "string.min": "First name must be at least 2 characters long.",
+    "string.max": "First name must not exceed 50 characters.",
+  }),
+
+  lastName: Joi.string().min(2).max(50).optional().messages({
+    "string.base": "Last name must be a string.",
+    "string.min": "Last name must be at least 2 characters long.",
+    "string.max": "Last name must not exceed 50 characters.",
+  }),
+
+  username: Joi.string().alphanum().min(3).max(30).optional().messages({
+    "string.base": "Username must be a string.",
+    "string.alphanum": "Username must only contain alphanumeric characters.",
+    "string.min": "Username must be at least 3 characters long.",
+    "string.max": "Username must not exceed 30 characters.",
+  }),
+
+  email: Joi.string().email().optional().messages({
+    "string.base": "Email must be a string.",
+    "string.email": "Please provide a valid email address.",
+  }),
+
+  bio: Joi.string().max(160).optional().messages({
+    "string.base": "Bio must be a string.",
+    "string.max": "Bio cannot exceed 160 characters.",
+  }),
+})
+.min(1) // Require at least one field to be present
+.messages({
+  "object.min": "At least one field must be provided for update",
+});
