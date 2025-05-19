@@ -66,7 +66,6 @@ export const getMessageID = async (req: AuthRequest, res: Response) => {
     }
 
     const messages = await getMessages(chatId as string);
-    logger.info("Messages retrieved successfully", messages);
     sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,

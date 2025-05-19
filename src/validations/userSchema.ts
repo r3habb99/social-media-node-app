@@ -54,11 +54,16 @@ export const registerSchema = Joi.object({
 });
 
 export const loginSchema = Joi.object({
-  email: Joi.string().email().required().messages({
+  email: Joi.string().email().messages({
     "string.base": "Email must be a string.",
-    "string.empty": "Email is required.",
     "string.email": "Please provide a valid email address.",
-    "any.required": "Email is required.",
+  }),
+
+  username: Joi.string().alphanum().min(3).max(30).messages({
+    "string.base": "Username must be a string.",
+    "string.alphanum": "Username must only contain alphanumeric characters.",
+    "string.min": "Username must be at least 3 characters long.",
+    "string.max": "Username must not exceed 30 characters.",
   }),
 
   password: Joi.string().required().messages({
@@ -66,7 +71,16 @@ export const loginSchema = Joi.object({
     "string.empty": "Password is required.",
     "any.required": "Password is required.",
   }),
-});
+})
+.custom((value, helpers) => {
+  // Check if at least one of email or username is provided
+  if (!value.email && !value.username) {
+    return helpers.error('object.missing', {
+      message: 'Either email or username is required'
+    });
+  }
+  return value;
+}, 'Email or Username Validation');
 
 export const updateUserSchema = Joi.object({
   firstName: Joi.string().min(2).max(50).optional().messages({
