@@ -15,6 +15,7 @@ import {
 import {
   createUser,
   getUser,
+  getUserByUsername,
   getUserById,
   getUserProfileWithStats,
   removeToken,
@@ -103,16 +104,38 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 // Login a user
 export const loginUser = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, username } = req.body;
 
-    // Fetch user by email
-    const user = await getUser(email);
+    // Check if either email or username is provided
+    if (!email && !username) {
+      logger.error("Login failed: Email or username is required");
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: HttpResponseMessages.BAD_REQUEST,
+        data: "Email or username is required",
+      });
+    }
+
+    // Attempt to find user by email first, then by username if email is not provided
+    let user = null;
+    let identifier = "";
+
+    if (email) {
+      user = await getUser(email);
+      identifier = email;
+    } else if (username) {
+      user = await getUserByUsername(username);
+      identifier = username;
+    }
+
     // Ensure _id is correctly typed as string
     const userId = user?._id as string;
+
     // Ensure user exists and has a password
     if (!user || typeof user.password !== "string") {
       logger.error(
-        `Login failed: User not found or password missing (${email})`
+        `Login failed: User not found or password missing (${identifier})`
       );
       return sendResponse({
         res,
@@ -125,7 +148,7 @@ export const loginUser = async (req: Request, res: Response) => {
     // Compare password securely
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
-      logger.error(`Login failed: Invalid credentials for (${email})`);
+      logger.error(`Login failed: Invalid credentials for (${identifier})`);
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
@@ -158,7 +181,7 @@ export const loginUser = async (req: Request, res: Response) => {
       username: user.username,
     };
 
-    logger.info(`User logged in successfully (${email})`);
+    logger.info(`User logged in successfully (${identifier})`);
     sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,

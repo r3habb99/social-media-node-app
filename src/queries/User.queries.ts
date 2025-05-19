@@ -34,6 +34,16 @@ export const getUser = async (email: string): Promise<IUser | null> => {
   }
 };
 
+export const getUserByUsername = async (username: string): Promise<IUser | null> => {
+  try {
+    const user = await User.findOne({ username });
+    return transformUserMediaUrls(user);
+  } catch (error) {
+    logger.error("❌ Error fetching user by username: ", error);
+    return null;
+  }
+};
+
 export const getUserById = async (userId: string): Promise<IUser | null> => {
   try {
     const user = await User.findById(userId).select("-password");

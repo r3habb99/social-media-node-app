@@ -30,22 +30,78 @@ export const userRoutes = {
   "/api/user/login": {
     post: {
       tags: ["User"],
-      summary: "Login a user",
+      summary: "Login a user with email or username",
+      description: "Login using either email or username with password. At least one of email or username must be provided.",
       requestBody: {
         required: true,
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/LoginUser" },
-            example: {
-              email: "john@example.com",
-              password: "Password123!",
-            },
+            examples: {
+              emailLogin: {
+                summary: "Login with email",
+                value: {
+                  email: "john@example.com",
+                  password: "Password123!",
+                }
+              },
+              usernameLogin: {
+                summary: "Login with username",
+                value: {
+                  username: "johndoe",
+                  password: "Password123!",
+                }
+              }
+            }
           },
         },
       },
       responses: {
-        "200": { description: "Login successful" },
-        "400": { description: "Invalid credentials" },
+        "200": {
+          description: "Login successful",
+          content: {
+            "application/json": {
+              example: {
+                statusCode: 200,
+                message: "Success",
+                data: {
+                  userData: {
+                    id: "60d21b4667d0d8992e610c85",
+                    firstName: "John",
+                    lastName: "Doe",
+                    email: "john@example.com",
+                    username: "johndoe"
+                  },
+                  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          description: "Bad request - Invalid credentials or missing required fields",
+          content: {
+            "application/json": {
+              example: {
+                statusCode: 400,
+                message: "Bad Request",
+                data: "Invalid Credentials"
+              }
+            }
+          }
+        },
+        "404": {
+          description: "User not found",
+          content: {
+            "application/json": {
+              example: {
+                statusCode: 404,
+                message: "Not Found",
+                data: "User not found"
+              }
+            }
+          }
+        }
       },
     },
   },

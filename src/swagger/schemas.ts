@@ -20,12 +20,18 @@ export const schemas = {
   },
   LoginUser: {
     type: "object",
-    required: ["email", "password"],
+    required: ["password"],
     properties: {
       email: {
         type: "string",
         format: "email",
         example: "john@example.com",
+        description: "User's email (either email or username is required)",
+      },
+      username: {
+        type: "string",
+        example: "johndoe",
+        description: "User's username (either email or username is required)",
       },
       password: { type: "string", example: "Password123!" },
     },
