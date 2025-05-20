@@ -87,7 +87,7 @@ export const initializeSocket = (httpServer: HTTPServer): Server => {
     io.emit("user online", { userId });
 
     // Join a chat room
-    socket.on("join room", (roomId) => {
+    socket.on("join room", (roomId, callback) => {
       try {
         if (!roomId) {
           throw new Error("Invalid room ID");
@@ -109,10 +109,20 @@ export const initializeSocket = (httpServer: HTTPServer): Server => {
         });
 
         logger.info(`User ${userId} joined room: ${roomId}`);
-      } catch (error: any) {
-        const errorMessage = error?.message || "Unknown error joining room";
+        
+        // Send acknowledgment if callback provided
+        if (typeof callback === 'function') {
+          callback({ success: true });
+        }
+      } catch (error) {
+        const errorMessage = (error as Error)?.message || "Unknown error joining room";
         logger.error(`Error joining room: ${errorMessage}`);
         socket.emit("error", { message: errorMessage });
+        
+        // Send error in acknowledgment if callback provided
+        if (typeof callback === 'function') {
+          callback({ success: false, error: errorMessage });
+        }
       }
     });
 
@@ -196,8 +206,12 @@ export const initializeSocket = (httpServer: HTTPServer): Server => {
     });
 
     // Enhanced typing indicators with debounce information
-    socket.on("typing", ({ roomId, isTyping }) => {
+    socket.on("typing", (data) => {
       try {
+        // Support both roomId and chatId in payload
+        const roomId = data.roomId || data.chatId;
+        const isTyping = data.isTyping !== undefined ? data.isTyping : true;
+        
         if (!roomId) {
           throw new Error("Invalid room ID for typing event");
         }
@@ -221,9 +235,8 @@ export const initializeSocket = (httpServer: HTTPServer): Server => {
             isTyping ? "started" : "stopped"
           } typing in room: ${roomId}`
         );
-      } catch (error: any) {
-        const errorMessage =
-          error?.message || "Unknown error with typing indicator";
+      } catch (error) {
+        const errorMessage = (error as Error)?.message || "Unknown error with typing indicator";
         logger.error(`Error with typing indicator: ${errorMessage}`);
         socket.emit("error", { message: errorMessage });
       }
