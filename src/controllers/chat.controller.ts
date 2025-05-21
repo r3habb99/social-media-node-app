@@ -15,6 +15,13 @@ import { Chat } from "../entities";
 import { HttpResponseMessages, HttpStatusCodes } from "../constants";
 import { IUser } from "../interfaces/user.interface";
 import { getFullMediaUrl } from "../utils/mediaUrl";
+import {
+  emitNewMessage,
+  emitChatUpdated,
+  emitUserAddedToGroup,
+  emitUserRemovedFromGroup,
+  emitGroupNameUpdated
+} from "../services/chatSocketService";
 
 /**
  * Create a new individual chat
@@ -54,7 +61,9 @@ export const createChat = async (req: AuthRequest, res: Response) => {
       users: { $all: [currentUserId, userId] },
     }).populate("users", "-password");
 
+    let isNewChat = false;
     if (!chat) {
+      isNewChat = true;
       // Create a new chat if it doesn't exist
       chat = await Chat.create({
         chatName,
@@ -64,6 +73,16 @@ export const createChat = async (req: AuthRequest, res: Response) => {
 
       // Populate the users field after creation
       chat = await chat.populate("users", "-password");
+    }
+
+    // If this is a new chat, emit socket event for real-time update
+    if (isNewChat && chat) {
+      // Emit to both users
+      const chatId = chat._id ? chat._id.toString() : chat.id?.toString();
+      if (chatId) {
+        emitChatUpdated(chatId, chat);
+        logger.info(`New chat created and broadcasted via socket`);
+      }
     }
 
     logger.info(`Chat created successfully with ${chatName}`);
@@ -185,9 +204,12 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     // Update the latest message in the chat
     if (message && message._id) {
       await Chat.findByIdAndUpdate(chatId, { latestMessage: message._id });
+
+      // Emit socket event for real-time message delivery
+      emitNewMessage(chatId, message);
     }
 
-    logger.info("Message sent successfully");
+    logger.info("Message sent successfully and broadcasted via socket");
     return sendResponse({
       res,
       statusCode: HttpStatusCodes.CREATED,
@@ -307,7 +329,11 @@ export const addUserToGroupChat = async (req: AuthRequest, res: Response) => {
       });
     }
     const chat = await addUserToGroup(chatId, userId);
-    logger.info(`User ${userId} added to group chat ${chatId}`);
+
+    // Emit socket event for real-time update
+    emitUserAddedToGroup(chatId, userId, chat);
+
+    logger.info(`User ${userId} added to group chat ${chatId} and broadcasted via socket`);
     sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,
@@ -342,7 +368,11 @@ export const removeUserFromGroupChat = async (
       });
     }
     const chat = await removeUserFromGroup(chatId, userId);
-    logger.info(`User ${userId} removed from group chat ${chatId}`);
+
+    // Emit socket event for real-time update
+    emitUserRemovedFromGroup(chatId, userId, chat);
+
+    logger.info(`User ${userId} removed from group chat ${chatId} and broadcasted via socket`);
     sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,
@@ -374,7 +404,11 @@ export const updateGroupChatName = async (req: AuthRequest, res: Response) => {
       });
     }
     const chat = await updateGroupName(chatId, chatName);
-    logger.info(`Group chat ${chatId} name updated to ${chatName}`);
+
+    // Emit socket event for real-time update
+    emitGroupNameUpdated(chatId, chatName, chat);
+
+    logger.info(`Group chat ${chatId} name updated to ${chatName} and broadcasted via socket`);
     sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,

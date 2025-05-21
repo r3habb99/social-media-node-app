@@ -8,6 +8,11 @@ import {
   searchMessages,
 } from "../queries";
 import { HttpResponseMessages, HttpStatusCodes } from "../constants";
+import {
+  emitNewMessage,
+  emitMessageDeleted,
+  emitMessageEdited
+} from "../services/chatSocketService";
 
 /**
  * Create a new message
@@ -30,7 +35,13 @@ export const createMessage = async (req: AuthRequest, res: Response) => {
     const senderId = req.user?.id;
 
     const message = await saveMessage(senderId, content, chatId);
-    logger.info("Message created successfully", message);
+
+    // Emit socket event for real-time message delivery
+    if (message) {
+      emitNewMessage(chatId, message);
+    }
+
+    logger.info("Message created successfully and broadcasted via socket");
     sendResponse({
       res,
       statusCode: HttpStatusCodes.CREATED,
@@ -89,6 +100,8 @@ export const getMessageID = async (req: AuthRequest, res: Response) => {
 export const deleteMessage = async (req: AuthRequest, res: Response) => {
   try {
     const { messageId } = req.params;
+    const { chatId } = req.body; // Require chatId for socket event
+
     if (!messageId) {
       return sendResponse({
         res,
@@ -96,8 +109,21 @@ export const deleteMessage = async (req: AuthRequest, res: Response) => {
         message: "messageId is required",
       });
     }
+
+    if (!chatId) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "chatId is required in request body",
+      });
+    }
+
     await deleteMessageById(messageId);
-    logger.info(`Message ${messageId} deleted (soft)`);
+
+    // Emit socket event for real-time update
+    emitMessageDeleted(chatId, messageId);
+
+    logger.info(`Message ${messageId} deleted (soft) and broadcasted via socket`);
     sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,
@@ -120,7 +146,7 @@ export const deleteMessage = async (req: AuthRequest, res: Response) => {
 export const editMessage = async (req: AuthRequest, res: Response) => {
   try {
     const { messageId } = req.params;
-    const { content } = req.body;
+    const { content, chatId } = req.body;
     if (!messageId || !content) {
       return sendResponse({
         res,
@@ -128,8 +154,23 @@ export const editMessage = async (req: AuthRequest, res: Response) => {
         message: "messageId and content are required",
       });
     }
+
+    if (!chatId) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "chatId is required in request body",
+      });
+    }
+
     const updatedMessage = await editMessageById(messageId, content);
-    logger.info(`Message ${messageId} edited`);
+
+    // Emit socket event for real-time update
+    if (updatedMessage) {
+      emitMessageEdited(chatId, updatedMessage);
+    }
+
+    logger.info(`Message ${messageId} edited and broadcasted via socket`);
     sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,

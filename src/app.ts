@@ -38,11 +38,15 @@ setupRoutes(app);
 setupErrorHandling(app);
 
 // Initialize WebSocket server
-const io = initializeSocket(httpServer);
+export const io = initializeSocket(httpServer);
 
 // Set socket instance in the centralized notification service
-import { setSocketInstance } from "./services/notificationService";
-setSocketInstance(io);
+import { setSocketInstance as setNotificationSocketInstance } from "./services/notificationService";
+import { setSocketInstance as setChatSocketInstance } from "./services/chatSocketService";
+
+// Set socket instance in both services
+setNotificationSocketInstance(io);
+setChatSocketInstance(io);
 
 export const startServer = async () => {
   try {
