@@ -1,4 +1,5 @@
 import { Response } from "express";
+import mongoose from "mongoose";
 import { AuthRequest, logger, sendResponse } from "../services";
 import {
   getMessages,
@@ -89,12 +90,15 @@ export const createMessage = async (req: AuthRequest, res: Response) => {
 
 /**
  * Get all messages with pagination support
+ * Handles both query parameters and route parameters for chatId
  */
 export const getMessageID = async (req: AuthRequest, res: Response) => {
   try {
-    const { chatId, limit = 20, skip = 0 } = req.query;
+    // Get chatId from either query params or route params
+    let chatIdParam = req.query.chatId || req.params.chatId;
+    const { limit = 20, skip = 0 } = req.query;
 
-    if (!chatId) {
+    if (!chatIdParam) {
       logger.error("chatId is required");
       return sendResponse({
         res,
@@ -104,18 +108,41 @@ export const getMessageID = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const messages = await getMessages(
-      chatId as string,
-      parseInt(limit as string, 10),
-      parseInt(skip as string, 10)
-    );
+    // Ensure chatId is a string
+    const chatId = chatIdParam as string;
 
-    sendResponse({
-      res,
-      statusCode: HttpStatusCodes.OK,
-      message: HttpResponseMessages.SUCCESS,
-      data: messages,
-    });
+    // Validate that the chatId is a valid ObjectId if it's not 'id'
+    if (chatId === 'id') {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "Invalid chat ID",
+        error: "Chat ID cannot be 'id'",
+      });
+    }
+
+    try {
+      const messages = await getMessages(
+        chatId,
+        parseInt(limit as string, 10),
+        parseInt(skip as string, 10)
+      );
+
+      sendResponse({
+        res,
+        statusCode: HttpStatusCodes.OK,
+        message: HttpResponseMessages.SUCCESS,
+        data: messages,
+      });
+    } catch (err) {
+      logger.error(`Error retrieving messages for chat ${chatId}`, err);
+      sendResponse({
+        res,
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
+        error: err,
+      });
+    }
   } catch (error) {
     logger.error("Error retrieving messages", error);
     sendResponse({
@@ -267,40 +294,93 @@ export const searchMessagesController = async (
 };
 
 /**
- * Get a message by ID
+ * Get a message by ID or all messages for a chat
+ * This dual-purpose controller handles both:
+ * 1. Getting a single message by its ID
+ * 2. Getting all messages for a chat when the messageId is actually a chatId
  */
 export const getSingleMessage = async (req: AuthRequest, res: Response) => {
   try {
     const { messageId } = req.params;
+    const { chatId, limit = 20, skip = 0 } = req.query;
 
     if (!messageId) {
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
-        message: "messageId is required",
+        message: "ID parameter is required",
       });
     }
 
-    try {
-      // Use the query function to get the message
-      const message = await getMessageById(messageId);
+    // Special case: If messageId is 'id' and chatId is provided in query params
+    if (messageId === 'id' && chatId) {
+      try {
+        // Use the chatId from query params
+        const messages = await getMessages(
+          chatId as string,
+          parseInt(limit as string, 10),
+          parseInt(skip as string, 10)
+        );
 
-      sendResponse({
-        res,
-        statusCode: HttpStatusCodes.OK,
-        message: HttpResponseMessages.SUCCESS,
-        data: message,
-      });
-    } catch (err: any) {
-      // Handle the case where message is not found
-      if (err.message === "Message not found") {
         return sendResponse({
           res,
-          statusCode: HttpStatusCodes.NOT_FOUND,
-          message: "Message not found",
+          statusCode: HttpStatusCodes.OK,
+          message: HttpResponseMessages.SUCCESS,
+          data: messages,
+        });
+      } catch (chatErr) {
+        logger.error(`Error retrieving messages for chat ${chatId}`, chatErr);
+        return sendResponse({
+          res,
+          statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+          message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
+          error: chatErr,
         });
       }
-      throw err; // Re-throw other errors to be caught by the outer catch block
+    }
+
+    // For all other cases, try to determine if this is a valid ObjectId
+    let isValidObjectId = false;
+    try {
+      // Check if the ID is a valid MongoDB ObjectId
+      new mongoose.Types.ObjectId(messageId);
+      isValidObjectId = true;
+    } catch (err) {
+      // Not a valid ObjectId
+      isValidObjectId = false;
+    }
+
+    if (isValidObjectId) {
+      // It's a valid ObjectId, so try to get a single message
+      try {
+        // Use the query function to get the message
+        const message = await getMessageById(messageId);
+
+        sendResponse({
+          res,
+          statusCode: HttpStatusCodes.OK,
+          message: HttpResponseMessages.SUCCESS,
+          data: message,
+        });
+      } catch (err: any) {
+        // Handle the case where message is not found
+        if (err.message === "Message not found") {
+          return sendResponse({
+            res,
+            statusCode: HttpStatusCodes.NOT_FOUND,
+            message: "Message not found",
+          });
+        }
+        throw err; // Re-throw other errors to be caught by the outer catch block
+      }
+    } else {
+      // Not a valid ObjectId and not the special 'id' case
+      // This is likely an error case
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "Invalid message ID format",
+      });
     }
   } catch (error) {
     logger.error("Error retrieving message", error);

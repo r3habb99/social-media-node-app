@@ -161,7 +161,15 @@ export const editMessageById = async (
  */
 export const getMessages = async (chatId: string, limit = 20, skip = 0) => {
   try {
-    const messages = await Message.find({ chat: chatId, isDeleted: false })
+    // Convert chatId to ObjectId if it's not already
+    let chatObjectId;
+    try {
+      chatObjectId = new mongoose.Types.ObjectId(chatId);
+    } catch (err) {
+      throw new Error(`Invalid chat ID format: ${chatId}`);
+    }
+
+    const messages = await Message.find({ chat: chatObjectId, isDeleted: false })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -175,7 +183,7 @@ export const getMessages = async (chatId: string, limit = 20, skip = 0) => {
     // Transform all media URLs to full URLs
     return transformMessagesMediaUrls(messages);
   } catch (error) {
-    logger.error("Error fetching messages", error);
+    logger.error(`Error fetching messages for chat ${chatId}`, error);
     throw error;
   }
 };

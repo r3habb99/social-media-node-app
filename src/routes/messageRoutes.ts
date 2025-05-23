@@ -20,7 +20,7 @@ router.get("/search", authMiddleware, searchMessagesController);
 // Get messages for a chat
 router.get("/chat", authMiddleware, getMessageID);
 
-// Get a single message by ID
+// Get a single message by ID or all messages for a chat
 router.get("/:messageId", authMiddleware, getSingleMessage);
 
 // Delete a message
