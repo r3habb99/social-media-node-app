@@ -36,6 +36,7 @@ import {
   editMessageById,
   getMessages,
   searchMessages,
+  getMessageById
 } from "./message.queries";
 
 // Re-export all with specific names
@@ -54,4 +55,5 @@ export {
   editMessageById,
   getMessages,
   searchMessages,
+  getMessageById
 };

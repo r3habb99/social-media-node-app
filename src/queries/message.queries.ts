@@ -2,22 +2,48 @@ import mongoose from "mongoose";
 import { Message } from "../entities";
 import { logger } from "../services";
 import { transformMessagesMediaUrls, transformMessageMediaUrls } from "../utils/messageMediaUrl";
+import { MessageType, MessageStatus } from "../interfaces";
 
 /**
  * Save a new message
  */
-export const saveMessage = async (senderId: string, content: string, chatId: string) => {
+export const saveMessage = async (
+  senderId: string,
+  content: string,
+  chatId: string,
+  messageType: MessageType = MessageType.TEXT,
+  media: string[] = [],
+  replyToId?: string
+) => {
   try {
-    const message = await Message.create({
+    // Create message object with all fields
+    const messageData: any = {
       sender: senderId,
       content,
       chat: chatId,
-    });
+      messageType,
+      status: MessageStatus.SENT,
+    };
 
-    // Populate the sender to get their profile picture
-    await message.populate("sender", "-password");
+    // Add optional fields if provided
+    if (media && media.length > 0) {
+      messageData.media = media;
+    }
 
-    // Transform profile picture URL to full URL
+    if (replyToId) {
+      messageData.replyTo = replyToId;
+    }
+
+    const message = await Message.create(messageData);
+
+    // Populate the sender, chat, and replyTo if exists
+    await message.populate([
+      { path: "sender", select: "-password" },
+      { path: "chat" },
+      { path: "replyTo", populate: { path: "sender", select: "-password" } }
+    ]);
+
+    // Transform all media URLs to full URLs
     return transformMessageMediaUrls(message);
   } catch (error) {
     logger.error("Error saving message", error);
@@ -35,11 +61,27 @@ export const markMessageAsRead = async (messageId: string, userId: string) => {
       throw new Error("Message not found");
     }
     const userObjectId = new mongoose.Types.ObjectId(userId);
-    if (!message.readBy.some((id) => id.equals(userObjectId))) {
-      message.readBy.push(userObjectId);
+
+    // Check if user ID is already in readBy array
+    const readByIds = message.readBy.map(id =>
+      id instanceof mongoose.Types.ObjectId ? id.toString() : id.toString()
+    );
+
+    if (!readByIds.includes(userObjectId.toString())) {
+      message.readBy.push(userObjectId as any);
+      message.status = MessageStatus.READ;
       await message.save();
     }
-    return message;
+
+    // Populate the message with user details
+    await message.populate([
+      { path: "sender", select: "-password" },
+      { path: "chat" },
+      { path: "readBy", select: "-password" },
+      { path: "replyTo", populate: { path: "sender", select: "-password" } }
+    ]);
+
+    return transformMessageMediaUrls(message);
   } catch (error) {
     logger.error("Error marking message as read", error);
     throw error;
@@ -58,6 +100,14 @@ export const deleteMessageById = async (messageId: string) => {
     message.isDeleted = true;
     message.deletedAt = new Date();
     await message.save();
+
+    // Return the updated message with populated fields
+    await message.populate([
+      { path: "sender", select: "-password" },
+      { path: "chat" }
+    ]);
+
+    return transformMessageMediaUrls(message);
   } catch (error) {
     logger.error("Error deleting message", error);
     throw error;
@@ -67,16 +117,39 @@ export const deleteMessageById = async (messageId: string) => {
 /**
  * Edit a message content
  */
-export const editMessageById = async (messageId: string, content: string) => {
+export const editMessageById = async (
+  messageId: string,
+  content: string,
+  media?: string[]
+) => {
   try {
     const message = await Message.findById(new mongoose.Types.ObjectId(messageId));
     if (!message) {
       throw new Error("Message not found");
     }
-    message.content = content;
+
+    // Update content if provided
+    if (content) {
+      message.content = content;
+    }
+
+    // Update media if provided
+    if (media !== undefined) {
+      message.media = media;
+    }
+
     message.updatedAt = new Date();
     await message.save();
-    return message;
+
+    // Populate the message with user details
+    await message.populate([
+      { path: "sender", select: "-password" },
+      { path: "chat" },
+      { path: "readBy", select: "-password" },
+      { path: "replyTo", populate: { path: "sender", select: "-password" } }
+    ]);
+
+    return transformMessageMediaUrls(message);
   } catch (error) {
     logger.error("Error editing message", error);
     throw error;
@@ -92,9 +165,14 @@ export const getMessages = async (chatId: string, limit = 20, skip = 0) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("sender", "-password");
+      .populate([
+        { path: "sender", select: "-password" },
+        { path: "chat", populate: { path: "users", select: "-password" } },
+        { path: "readBy", select: "-password" },
+        { path: "replyTo", populate: { path: "sender", select: "-password" } }
+      ]);
 
-    // Transform profile picture URLs to full URLs
+    // Transform all media URLs to full URLs
     return transformMessagesMediaUrls(messages);
   } catch (error) {
     logger.error("Error fetching messages", error);
@@ -112,12 +190,42 @@ export const searchMessages = async (chatId: string, query: string) => {
       chat: chatId,
       isDeleted: false,
       $or: [{ content: regex }],
-    }).populate("sender", "-password");
+    }).populate([
+      { path: "sender", select: "-password" },
+      { path: "chat" },
+      { path: "readBy", select: "-password" },
+      { path: "replyTo", populate: { path: "sender", select: "-password" } }
+    ]);
 
-    // Transform profile picture URLs to full URLs
+    // Transform all media URLs to full URLs
     return transformMessagesMediaUrls(messages);
   } catch (error) {
     logger.error("Error searching messages", error);
+    throw error;
+  }
+};
+
+/**
+ * Get message by ID with full population
+ */
+export const getMessageById = async (messageId: string) => {
+  try {
+    const message = await Message.findById(new mongoose.Types.ObjectId(messageId))
+      .populate([
+        { path: "sender", select: "-password" },
+        { path: "chat", populate: { path: "users", select: "-password" } },
+        { path: "readBy", select: "-password" },
+        { path: "replyTo", populate: { path: "sender", select: "-password" } }
+      ]);
+
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    // Transform all media URLs to full URLs
+    return transformMessageMediaUrls(message);
+  } catch (error) {
+    logger.error(`Error fetching message with ID ${messageId}`, error);
     throw error;
   }
 };

@@ -1,5 +1,5 @@
-import mongoose, { Schema, Model } from "mongoose";
-import { IMessage } from "../interfaces";
+import mongoose, { Schema, Model, Document } from "mongoose";
+import { IMessage, MessageType, MessageStatus } from "../interfaces";
 
 const ObjectId = Schema.Types.ObjectId;
 
@@ -43,6 +43,25 @@ const MessageSchema: Schema<IMessage> = new Schema(
         ref: "User",
       },
     ],
+    messageType: {
+      type: String,
+      enum: Object.values(MessageType),
+      default: MessageType.TEXT,
+    },
+    status: {
+      type: String,
+      enum: Object.values(MessageStatus),
+      default: MessageStatus.SENT,
+    },
+    media: {
+      type: [String],
+      default: [],
+    },
+    replyTo: {
+      type: ObjectId,
+      ref: "Message",
+      default: null,
+    },
   },
   {
     timestamps: true,

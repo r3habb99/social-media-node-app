@@ -6,6 +6,7 @@ import {
   deleteMessageById,
   editMessageById,
   searchMessages,
+  getMessageById,
 } from "../queries";
 import { HttpResponseMessages, HttpStatusCodes } from "../constants";
 import {
@@ -13,13 +14,14 @@ import {
   emitMessageDeleted,
   emitMessageEdited
 } from "../services/chatSocketService";
+import { MessageType } from "../interfaces";
 
 /**
  * Create a new message
  */
 export const createMessage = async (req: AuthRequest, res: Response) => {
   try {
-    const { content, chatId } = req.body;
+    const { content, chatId, messageType, media, replyToId } = req.body;
 
     if (!content || !chatId) {
       logger.error("Content and chatId are required");
@@ -34,14 +36,40 @@ export const createMessage = async (req: AuthRequest, res: Response) => {
     // Extract user ID from the token (auth middleware attaches user to req)
     const senderId = req.user?.id;
 
-    const message = await saveMessage(senderId, content, chatId);
+    if (!senderId) {
+      logger.error("User ID not found in token");
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        message: HttpResponseMessages.UNAUTHORIZED,
+        error: "User ID not found in token",
+      });
+    }
+
+    // Determine message type based on input or default to TEXT
+    const msgType = messageType ||
+      (media && media.length > 0 ?
+        (media[0].includes('.mp4') || media[0].includes('.mov') ? MessageType.VIDEO :
+         media[0].includes('.mp3') || media[0].includes('.wav') ? MessageType.AUDIO :
+         MessageType.IMAGE) :
+        MessageType.TEXT);
+
+    // Save message with all provided data
+    const message = await saveMessage(
+      senderId,
+      content,
+      chatId,
+      msgType,
+      media || [],
+      replyToId
+    );
 
     // Emit socket event for real-time message delivery
     if (message) {
       emitNewMessage(chatId, message);
     }
 
-    logger.info("Message created successfully and broadcasted via socket");
+    logger.info(`Message created successfully by user ${senderId} and broadcasted via socket`);
     sendResponse({
       res,
       statusCode: HttpStatusCodes.CREATED,
@@ -76,7 +104,12 @@ export const getMessageID = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const messages = await getMessages(chatId as string);
+    const messages = await getMessages(
+      chatId as string,
+      parseInt(limit as string, 10),
+      parseInt(skip as string, 10)
+    );
+
     sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,
@@ -118,7 +151,7 @@ export const deleteMessage = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    await deleteMessageById(messageId);
+    const deletedMessage = await deleteMessageById(messageId);
 
     // Emit socket event for real-time update
     emitMessageDeleted(chatId, messageId);
@@ -128,6 +161,7 @@ export const deleteMessage = async (req: AuthRequest, res: Response) => {
       res,
       statusCode: HttpStatusCodes.OK,
       message: "Message deleted successfully",
+      data: deletedMessage
     });
   } catch (error) {
     logger.error("Error deleting message", error);
@@ -146,12 +180,21 @@ export const deleteMessage = async (req: AuthRequest, res: Response) => {
 export const editMessage = async (req: AuthRequest, res: Response) => {
   try {
     const { messageId } = req.params;
-    const { content, chatId } = req.body;
-    if (!messageId || !content) {
+    const { content, chatId, media } = req.body;
+
+    if (!messageId) {
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
-        message: "messageId and content are required",
+        message: "messageId is required",
+      });
+    }
+
+    if (!content && !media) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "Either content or media must be provided",
       });
     }
 
@@ -163,7 +206,7 @@ export const editMessage = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const updatedMessage = await editMessageById(messageId, content);
+    const updatedMessage = await editMessageById(messageId, content, media);
 
     // Emit socket event for real-time update
     if (updatedMessage) {
@@ -214,6 +257,53 @@ export const searchMessagesController = async (
     });
   } catch (error) {
     logger.error("Error searching messages", error);
+    sendResponse({
+      res,
+      statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
+      error,
+    });
+  }
+};
+
+/**
+ * Get a message by ID
+ */
+export const getSingleMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    const { messageId } = req.params;
+
+    if (!messageId) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "messageId is required",
+      });
+    }
+
+    try {
+      // Use the query function to get the message
+      const message = await getMessageById(messageId);
+
+      sendResponse({
+        res,
+        statusCode: HttpStatusCodes.OK,
+        message: HttpResponseMessages.SUCCESS,
+        data: message,
+      });
+    } catch (err: any) {
+      // Handle the case where message is not found
+      if (err.message === "Message not found") {
+        return sendResponse({
+          res,
+          statusCode: HttpStatusCodes.NOT_FOUND,
+          message: "Message not found",
+        });
+      }
+      throw err; // Re-throw other errors to be caught by the outer catch block
+    }
+  } catch (error) {
+    logger.error("Error retrieving message", error);
     sendResponse({
       res,
       statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,

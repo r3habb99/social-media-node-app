@@ -147,16 +147,56 @@ export const schemas = {
     type: "object",
     required: ["content", "chatId"],
     properties: {
-      content: { type: "string", example: "Hello message" },
-      chatId: { type: "string", example: "chatId123" },
+      content: {
+        type: "string",
+        example: "Hello message",
+        description: "Content of the message"
+      },
+      chatId: {
+        type: "string",
+        example: "chatId123",
+        description: "ID of the chat this message belongs to"
+      },
+      messageType: {
+        type: "string",
+        enum: ["text", "image", "video", "file", "audio", "system"],
+        example: "text",
+        description: "Type of message content (optional, defaults to text or determined from media)"
+      },
+      media: {
+        type: "array",
+        items: { type: "string" },
+        example: ["url1.jpg", "url2.jpg"],
+        description: "Array of media URLs (optional)"
+      },
+      replyToId: {
+        type: "string",
+        example: "messageId123",
+        description: "ID of the message this is replying to (optional)"
+      }
     },
   },
   EditMessage: {
     type: "object",
-    required: ["content"],
     properties: {
-      content: { type: "string", example: "Updated message content" },
+      content: {
+        type: "string",
+        example: "Updated message content",
+        description: "Updated content of the message (optional if media is provided)"
+      },
+      chatId: {
+        type: "string",
+        example: "chatId123",
+        description: "ID of the chat this message belongs to (required for socket events)"
+      },
+      media: {
+        type: "array",
+        items: { type: "string" },
+        example: ["url1.jpg", "url2.jpg"],
+        description: "Updated array of media URLs (optional)"
+      }
     },
+    required: ["chatId"]
   },
 
   // Post related schemas
