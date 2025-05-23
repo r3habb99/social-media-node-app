@@ -88,11 +88,14 @@ export const getMessages = async (chatId: string) => {
       .populate("sender", "-password")
       .sort({ createdAt: 1 });
 
+    // Ensure all messages have valid IDs before transformation
+    const validMessages = messages.filter(msg => msg && msg._id);
+
     // Transform profile picture URLs to full URLs
-    return transformMessagesMediaUrls(messages);
+    return transformMessagesMediaUrls(validMessages);
   } catch (error) {
     logger.error("Error fetching messages", error);
-    return undefined;
+    return [];  // Return empty array instead of undefined to avoid null checks
   }
 };
 

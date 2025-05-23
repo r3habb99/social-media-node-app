@@ -552,10 +552,10 @@ export const initializeSocket = (httpServer: HTTPServer): Server => {
           return;
         }
 
-        // Mark each message as read
-        const readPromises = messages.map((msg) =>
-          markMessageAsRead(msg.id.toString(), userId)
-        );
+        // Mark each message as read - filter out messages without valid IDs
+        const readPromises = messages
+          .filter(msg => msg && msg.id) // Only process messages with valid IDs
+          .map((msg) => markMessageAsRead(msg.id.toString(), userId));
 
         const results = await Promise.all(readPromises);
 
