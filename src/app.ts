@@ -40,13 +40,15 @@ setupErrorHandling(app);
 // Initialize WebSocket server
 export const io = initializeSocket(httpServer);
 
-// Set socket instance in the centralized notification service
+// Set socket instance in the centralized services
 import { setSocketInstance as setNotificationSocketInstance } from "./services/notificationService";
 import { setSocketInstance as setChatSocketInstance } from "./services/chatSocketService";
+import { setWebRTCSocketInstance } from "./services/webrtcService";
 
-// Set socket instance in both services
+// Set socket instance in all services
 setNotificationSocketInstance(io);
 setChatSocketInstance(io);
+setWebRTCSocketInstance(io);
 
 export const startServer = async () => {
   try {
