@@ -234,6 +234,9 @@ router.get("/user/current-call", authMiddleware, getUserCurrentCallController);
  */
 router.get("/user/status", authMiddleware, getUserCallStatusController);
 
+// Alternative endpoint for backward compatibility
+router.get("/user/call-status", authMiddleware, getUserCallStatusController);
+
 /**
  * @swagger
  * /api/webrtc/admin/active-calls:
@@ -267,5 +270,34 @@ router.get("/user/status", authMiddleware, getUserCallStatusController);
  *         description: Unauthorized
  */
 router.get("/admin/active-calls", authMiddleware, getAllActiveCallsController);
+
+/**
+ * @swagger
+ * /api/webrtc/call/{callId}/status:
+ *   get:
+ *     summary: Get specific call status
+ *     tags: [WebRTC]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: callId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Call ID
+ *     responses:
+ *       200:
+ *         description: Call status retrieved successfully
+ *       404:
+ *         description: Call not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/call/:callId/status", authMiddleware, (req, res) => {
+  // This endpoint returns just the status of a specific call
+  // Reuse the existing getCallInfoController but return only status
+  getCallInfoController(req, res);
+});
 
 export default router;

@@ -83,7 +83,28 @@ export const notificationRoutes = {
       summary: "Mark all notifications as opened",
       security: [{ bearerAuth: [] }],
       responses: {
-        "200": { description: "All notifications marked as opened" },
+        "200": {
+          description: "All notifications marked as opened successfully",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  statusCode: { type: "number", example: 200 },
+                  message: { type: "string", example: "All notifications marked as opened successfully" },
+                  data: {
+                    type: "object",
+                    properties: {
+                      modifiedCount: { type: "number", example: 5 },
+                      message: { type: "string", example: "5 notifications were marked as opened" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "401": { description: "Unauthorized" },
         "500": { description: "Internal server error" },
       },
     },

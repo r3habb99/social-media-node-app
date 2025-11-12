@@ -111,24 +111,66 @@ export const createGroupChat = async (req: AuthRequest, res: Response) => {
     const { users, chatName } = req.body;
     const currentUserId = req.user?.id;
 
-    if (!users || users.length < 2 || !chatName) {
+    // Validation is handled by middleware, but add extra safety checks
+    if (!users || !Array.isArray(users) || users.length < 1 || !chatName) {
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
-        message: "A group chat requires at least 2 users and a chat name",
+        message: "A group chat requires at least 1 other user and a chat name",
       });
     }
 
-    // Add the current user to the group
-    users.push(currentUserId);
+    // Check if creator is trying to add themselves
+    if (users.includes(currentUserId)) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "You cannot add yourself to the group - you are automatically included as the creator",
+      });
+    }
+
+    // Check for duplicates in the users array
+    const userSet = new Set(users);
+    if (userSet.size !== users.length) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "Duplicate users are not allowed in the group",
+      });
+    }
+
+    // Add the current user as the creator
+    const allUsers = [currentUserId, ...users];
+
+    // Final check for total user count
+    if (allUsers.length > 50) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "A group chat cannot have more than 50 users total",
+      });
+    }
+
+    // Verify all users exist (optional - you might want to add this check)
+    // const existingUsers = await User.find({ _id: { $in: uniqueUsers } });
+    // if (existingUsers.length !== uniqueUsers.length) {
+    //   return sendResponse({
+    //     res,
+    //     statusCode: HttpStatusCodes.BAD_REQUEST,
+    //     message: "One or more users do not exist",
+    //   });
+    // }
 
     const chat = await Chat.create({
-      chatName,
+      chatName: chatName.trim(),
       isGroupChat: true,
-      users,
+      users: allUsers,
     });
 
-    logger.info("Group chat created successfully");
+    // Populate the chat with user details
+    await chat.populate("users", "-password");
+
+    logger.info(`Group chat "${chatName}" created successfully with ${allUsers.length} users (creator: ${currentUserId})`);
     return sendResponse({
       res,
       statusCode: HttpStatusCodes.CREATED,

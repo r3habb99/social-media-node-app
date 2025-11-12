@@ -130,16 +130,31 @@ export const forgotPassword = async (
       userType: user.userType,
     });
     const resetLink = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
-    logger.info(`${resetLink}`);
-    await sendResetPasswordEmail(email, resetLink);
-    logger.info(`✅ Password reset link sent to ${email}`);
-    return sendResponse({
-      res,
-      statusCode: HttpStatusCodes.OK,
-      message: HttpResponseMessages.SUCCESS,
-      // data: "Reset link sent to email",
-      data: resetToken,
-    });
+    logger.info(`Generated reset link for user ${userId}`);
+
+    try {
+      await sendResetPasswordEmail(email, resetLink);
+      logger.info(`✅ Password reset link sent to ${email}`);
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.OK,
+        message: "Password reset link sent to your email successfully",
+        data: {
+          message: "Please check your email for the password reset link",
+          email: email,
+          // Remove token from response in production for security
+          ...(process.env.NODE_ENV === "development" && { resetToken })
+        },
+      });
+    } catch (emailError) {
+      logger.error(`❌ Failed to send email to ${email}:`, emailError);
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+        message: "Email service temporarily unavailable",
+        error: emailError instanceof Error ? emailError.message : "Failed to send email",
+      });
+    }
   } catch (error) {
     logger.error("❌ Error sending forgot password email", error);
     return sendResponse({

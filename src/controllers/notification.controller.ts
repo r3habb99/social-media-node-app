@@ -118,20 +118,38 @@ export const handleMarkAllNotificationsAsOpened = async (
   res: Response
 ) => {
   try {
-    await markAllNotificationsAsOpened(req.user!.id);
+    const userId = req.user?.id;
+
+    if (!userId) {
+      logger.error("User ID not found in request");
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        message: HttpResponseMessages.UNAUTHORIZED,
+        error: "User authentication required",
+      });
+    }
+
+    const result = await markAllNotificationsAsOpened(userId);
+
+    logger.info(`✅ Marked ${result.modifiedCount} notifications as opened for user ${userId}`);
+
     return sendResponse({
       res,
-      statusCode: HttpStatusCodes.NO_CONTENT,
-      message: HttpResponseMessages.SUCCESS,
+      statusCode: HttpStatusCodes.OK,
+      message: "All notifications marked as opened successfully",
+      data: {
+        modifiedCount: result.modifiedCount,
+        message: `${result.modifiedCount} notifications were marked as opened`
+      },
     });
-    // res.sendStatus(204);
   } catch (error) {
     logger.error("❌ Error in markAllNotificationsAsOpened:", error);
     return sendResponse({
       res,
       statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
       message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
-      error: error,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
     });
   }
 };

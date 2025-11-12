@@ -10,7 +10,9 @@
     "build": "tsc",
     "prod": "cross-env NODE_ENV=production node dist/server.js",
     "build:prod": "cross-env NODE_ENV=production npm run build && npm run prod",
-    "watch": "tsc -w"
+    "watch": "tsc -w",
+    "test:email": "node scripts/test-email-config.js",
+    "test:email:send": "node scripts/test-email-config.js"
   },
   "keywords": [],
   "author": "",
@@ -36,6 +38,7 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
+    "axios": "^1.13.2",
     "bcryptjs": "^3.0.0",
     "body-parser": "^1.20.3",
     "class-validator": "^0.14.1",

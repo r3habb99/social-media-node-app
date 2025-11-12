@@ -189,21 +189,44 @@ export const getMessages = async (chatId: string, limit = 20, skip = 0) => {
 };
 
 /**
- * Search messages by content or sender
+ * Search messages by content or sender with pagination and sorting
  */
-export const searchMessages = async (chatId: string, query: string) => {
+export const searchMessages = async (
+  chatId: string,
+  query: string,
+  limit: number = 20,
+  skip: number = 0,
+  sortBy: string = "createdAt",
+  sortOrder: string = "desc"
+) => {
   try {
+    // Validate ObjectId format before querying
+    if (!mongoose.Types.ObjectId.isValid(chatId)) {
+      throw new Error("Invalid chat ID format - must be a valid MongoDB ObjectId");
+    }
+
     const regex = new RegExp(query, "i");
+    const sortOptions: any = {};
+    sortOptions[sortBy] = sortOrder === "asc" ? 1 : -1;
+
     const messages = await Message.find({
-      chat: chatId,
+      chat: new mongoose.Types.ObjectId(chatId),
       isDeleted: false,
-      $or: [{ content: regex }],
-    }).populate([
+      $or: [
+        { content: regex },
+        // You can add more search fields here if needed
+        // { "sender.username": regex }, // Uncomment if you want to search by sender username
+      ],
+    })
+    .populate([
       { path: "sender", select: "-password" },
       { path: "chat" },
       { path: "readBy", select: "-password" },
       { path: "replyTo", populate: { path: "sender", select: "-password" } }
-    ]);
+    ])
+    .sort(sortOptions)
+    .skip(skip)
+    .limit(limit);
 
     // Transform all media URLs to full URLs
     return transformMessagesMediaUrls(messages);

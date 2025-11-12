@@ -266,29 +266,81 @@ export const searchMessagesController = async (
   res: Response
 ) => {
   try {
-    const { chatId, query } = req.query;
-    if (!chatId || !query) {
-      return sendResponse({
-        res,
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        message: "chatId and query are required",
-      });
-    }
-    const results = await searchMessages(chatId as string, query as string);
-    logger.info("Messages search completed");
+    const {
+      chatId,
+      query,
+      limit = "20",
+      skip = "0",
+      sortBy = "createdAt",
+      sortOrder = "desc"
+    } = req.query;
+
+    // Validation is handled by middleware, so we can safely cast
+    const searchParams = {
+      chatId: chatId as string,
+      query: query as string,
+      limit: parseInt(limit as string, 10),
+      skip: parseInt(skip as string, 10),
+      sortBy: sortBy as string,
+      sortOrder: sortOrder as string
+    };
+
+    const results = await searchMessages(
+      searchParams.chatId,
+      searchParams.query,
+      searchParams.limit,
+      searchParams.skip,
+      searchParams.sortBy,
+      searchParams.sortOrder
+    );
+
+    logger.info(`Messages search completed for chat ${searchParams.chatId} with query "${searchParams.query}"`);
     sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,
-      message: "Search results",
-      data: results,
+      message: "Search results retrieved successfully",
+      data: {
+        results,
+        pagination: {
+          limit: searchParams.limit,
+          skip: searchParams.skip,
+          total: results.length
+        },
+        searchQuery: searchParams.query
+      },
     });
   } catch (error) {
     logger.error("Error searching messages", error);
+
+    // Handle specific error types
+    if (error instanceof Error) {
+      // Check for MongoDB ObjectId validation errors
+      if (error.message.includes("ObjectId") || error.message.includes("Cast to ObjectId failed")) {
+        return sendResponse({
+          res,
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          message: "Invalid chat ID format",
+          error: "Chat ID must be a valid MongoDB ObjectId",
+        });
+      }
+
+      // Check for other validation errors
+      if (error.message.includes("validation") || error.message.includes("invalid")) {
+        return sendResponse({
+          res,
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          message: "Invalid search parameters",
+          error: error.message,
+        });
+      }
+    }
+
+    // Default to internal server error for unexpected errors
     sendResponse({
       res,
       statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
       message: HttpResponseMessages.INTERNAL_SERVER_ERROR,
-      error,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
     });
   }
 };

@@ -59,17 +59,17 @@ export const initiateCall = async (
 
     // Check if initiator is already in a call
     if (callManager.isUserBusy(fromUserId)) {
-      throw new Error("Initiator is already in a call");
+      throw new Error("You are already in an active call. Please end your current call before starting a new one.");
     }
 
     // Check if target user is online
     if (!isUserOnline(toUserId)) {
-      throw new Error("Target user is not online");
+      throw new Error("The user you're trying to call is currently offline. They need to be online and connected to receive calls. Please try again when they're active.");
     }
 
     // Check if target user is busy
     if (callManager.isUserBusy(toUserId)) {
-      throw new Error("Target user is busy");
+      throw new Error("The user you're trying to call is currently busy on another call. Please try again later.");
     }
 
     // Generate call ID and create call data

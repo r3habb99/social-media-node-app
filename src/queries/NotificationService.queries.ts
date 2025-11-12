@@ -224,14 +224,20 @@ export const markNotificationAsOpened = async (
  * Mark all notifications for a user as opened
  */
 export const markAllNotificationsAsOpened = async (
-  userId: mongoose.Types.ObjectId
+  userId: string | mongoose.Types.ObjectId
 ) => {
   try {
+    // Convert string to ObjectId if necessary
+    const userObjectId = typeof userId === 'string'
+      ? new mongoose.Types.ObjectId(userId)
+      : userId;
+
     const result = await Notification.updateMany(
-      { userTo: userId, opened: false }, // Only update unread ones
-      { $set: { opened: true } }
+      { userTo: userObjectId, opened: false }, // Only update unread ones
+      { $set: { opened: true, updatedAt: new Date() } }
     );
 
+    logger.info(`✅ Updated ${result.modifiedCount} notifications for user ${userId}`);
     return { modifiedCount: result.modifiedCount };
   } catch (error) {
     logger.error("❌ Error marking all notifications as opened:", error);
