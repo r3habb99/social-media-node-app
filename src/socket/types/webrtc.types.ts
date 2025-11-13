@@ -44,6 +44,7 @@ export interface CallInitiateData {
   callId: string;
   callType: CallType;
   from: string;
+  fromUsername?: string;
   to: string;
   chatId?: string;
   timestamp: Date;
@@ -80,6 +81,7 @@ export interface SDPData {
 export interface CallEndData {
   callId: string;
   from: string;
+  fromUsername?: string;
   to: string;
   reason?: string;
   timestamp: Date;

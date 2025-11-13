@@ -47,6 +47,10 @@ export const registerChatHandlers = (io: Server, socket: Socket) => {
       socket.join(roomId);
       addUserToRoom(socket.id, roomId);
 
+      // Get room info for debugging
+      const roomSockets = io.sockets.adapter.rooms.get(roomId);
+      const roomSize = roomSockets ? roomSockets.size : 0;
+
       const user = getActiveUser(socket.id);
       if (user) {
         // Notify room that user has joined
@@ -56,7 +60,7 @@ export const registerChatHandlers = (io: Server, socket: Socket) => {
         });
       }
 
-      logger.info(`User ${userId} joined room: ${roomId}`);
+      logger.info(`User ${userId} joined room: ${roomId} (${roomSize} total users in room)`);
 
       // Send acknowledgment if callback provided
       if (typeof callback === 'function') {
@@ -84,6 +88,10 @@ export const registerChatHandlers = (io: Server, socket: Socket) => {
       socket.leave(roomId);
       removeUserFromRoom(socket.id, roomId);
 
+      // Get room info for debugging
+      const roomSockets = io.sockets.adapter.rooms.get(roomId);
+      const roomSize = roomSockets ? roomSockets.size : 0;
+
       const user = getActiveUser(socket.id);
       if (user) {
         // Notify room that user has left
@@ -93,7 +101,7 @@ export const registerChatHandlers = (io: Server, socket: Socket) => {
         });
       }
 
-      logger.info(`User ${userId} left room: ${roomId}`);
+      logger.info(`User ${userId} left room: ${roomId} (${roomSize} users remaining)`);
     } catch (error: any) {
       const errorMessage = error?.message || "Unknown error leaving room";
       logger.error(`Error leaving room: ${errorMessage}`);
@@ -122,9 +130,10 @@ export const registerChatHandlers = (io: Server, socket: Socket) => {
       );
 
       // Update chat's latest message if message was saved successfully
-      if (savedMessage && savedMessage._id) {
+      // Note: savedMessage has 'id' property (not '_id') due to toJSON transform
+      if (savedMessage && (savedMessage._id || savedMessage.id)) {
         await Chat.findByIdAndUpdate(chatRoomId, {
-          latestMessage: savedMessage._id,
+          latestMessage: savedMessage._id || savedMessage.id,
         });
 
         // Transform message to ensure all media URLs are full URLs
@@ -133,12 +142,26 @@ export const registerChatHandlers = (io: Server, socket: Socket) => {
           status: "delivered"
         });
 
+
+        // Get room info for debugging
+        const roomSockets = io.sockets.adapter.rooms.get(chatRoomId);
+        const roomSize = roomSockets ? roomSockets.size : 0;
+ 
+        if (roomSockets) {
+          const socketIds = Array.from(roomSockets);
+       } else {
+          logger.error(`ERROR: Room ${chatRoomId} not found in adapter!`);
+        }
+
+        logger.info(`📡 Broadcasting message to room ${chatRoomId} with ${roomSize} connected sockets`);
+
         // Broadcast message to room
         io.to(chatRoomId).emit("message received", transformedMessage);
 
+
         // Confirm delivery to sender
         socket.emit("message delivered", {
-          messageId: savedMessage._id,
+          messageId: savedMessage._id || savedMessage.id,
           timestamp: new Date(),
           status: "delivered"
         });
@@ -147,7 +170,7 @@ export const registerChatHandlers = (io: Server, socket: Socket) => {
         if (typeof callback === 'function') {
           callback({
             success: true,
-            messageId: savedMessage._id,
+            messageId: savedMessage._id || savedMessage.id,
             status: "delivered",
             timestamp: new Date()
           });

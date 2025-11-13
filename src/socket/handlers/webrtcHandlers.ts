@@ -78,11 +78,15 @@ export const registerWebRTCHandlers = (io: Server, socket: Socket) => {
         callType: call.callType
       });
 
-      // Emit call invitation to target user
+      // Get caller's username from socket data for better UX
+      const callerUsername = socket.data.username || userId;
+
+      // Emit call invitation to target user with caller info
       const success = emitToUser(io, data.to, "call:incoming", {
         callId,
         callType: data.callType,
         from: userId,
+        fromUsername: callerUsername,
         chatId: data.chatId,
         timestamp: new Date()
       });
@@ -248,12 +252,16 @@ export const registerWebRTCHandlers = (io: Server, socket: Socket) => {
       // Update call status
       callManager.endCall(data.callId, data.reason);
 
+      // Get caller's username from socket data
+      const callerUsername = socket.data.username || userId;
+
       // Notify other participants
       call.participants.forEach(participantId => {
         if (participantId !== userId) {
           emitToUser(io, participantId, "call:ended", {
             callId: data.callId,
             from: userId,
+            fromUsername: callerUsername,
             reason: data.reason,
             timestamp: new Date()
           });
