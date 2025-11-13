@@ -236,19 +236,24 @@ export const registerChatHandlers = (io: Server, socket: Socket) => {
         }
 
         // Broadcast typing status to room
-        socket
-          .to(roomId)
-          .emit(isTyping ? "user typing" : "user stopped typing", {
-            userId: user.userId,
-            username: user.username,
-            timestamp: new Date(),
-          });
+        const eventName = isTyping ? "user typing" : "user stopped typing";
+        const eventData = {
+          userId: user.userId,
+          username: user.username,
+          timestamp: new Date(),
+          roomId: roomId, // Include roomId in the event data
+        };
+
+        socket.to(roomId).emit(eventName, eventData);
 
         logger.debug(
           `User ${userId} ${
             isTyping ? "started" : "stopped"
-          } typing in room: ${roomId}`
+          } typing in room: ${roomId} - Broadcasting "${eventName}" event to room`
         );
+
+        // Also log the event data for debugging
+        logger.debug(`Event data:`, eventData);
 
         // Send acknowledgment if callback provided
         if (typeof callback === 'function') {
