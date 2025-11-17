@@ -7,6 +7,7 @@ A social media/chat application backend built with Node.js, Express, TypeScript,
 - User management (authentication, profiles, following)
 - Social interactions (posts, likes, retweets)
 - Real-time messaging (individual and group chats)
+- **🔒 End-to-End Message Encryption** (AES-256-GCM)
 - Media handling (profile pictures, post media)
 - Notifications
 - Comprehensive API documentation
@@ -17,6 +18,7 @@ A social media/chat application backend built with Node.js, Express, TypeScript,
 - **Database**: MongoDB with Mongoose
 - **Real-time Communication**: Socket.io
 - **Authentication**: JWT (JSON Web Tokens)
+- **Encryption**: AES-256-GCM (Node.js Crypto)
 - **Validation**: Joi
 - **Documentation**: Swagger/OpenAPI
 - **File Upload**: Multer
@@ -79,17 +81,20 @@ chat-node/
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/r3habb99/social-media-node-app.git
    cd chat-node
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Create a `.env` file in the root directory with the following variables:
+
    ```
    MONGO_URI=mongodb://localhost:27017/chat-node
    PORT=5050
@@ -100,6 +105,7 @@ chat-node/
    ```
 
 4. Start the development server:
+
    ```bash
    npm run dev
    ```
@@ -109,11 +115,13 @@ chat-node/
 The API is fully documented using Swagger/OpenAPI. To access the documentation:
 
 1. Start the server:
+
    ```bash
    npm run dev
    ```
 
 2. Open your browser and navigate to:
+
    ```
    http://localhost:5050/api-docs
    ```
@@ -132,6 +140,39 @@ The API is fully documented using Swagger/OpenAPI. To access the documentation:
      2. Click the "Authorize" button at the top of the page
      3. Enter your token in the format: `Bearer your_token_here`
      4. Click "Authorize" to use the token for all subsequent requests
+
+## 🔒 Message Encryption
+
+All chat messages are automatically encrypted using **AES-256-GCM** encryption before being stored in the database.
+
+### Quick Setup
+
+1. Generate an encryption key:
+
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
+
+2. Add to your `.env` file:
+
+   ```bash
+   MESSAGE_ENCRYPTION_KEY=your_generated_key_here
+   ```
+
+3. Restart the server - encryption is now active!
+
+### How It Works
+
+- **Saved to DB**: Messages are encrypted (unreadable)
+- **Retrieved by users**: Messages are decrypted (human-readable)
+- **Search**: Works on decrypted content
+- **Backward compatible**: Supports both encrypted and non-encrypted messages
+
+### Documentation
+
+- **Quick Start**: See `QUICK_START_ENCRYPTION.md`
+- **Full Guide**: See `docs/MESSAGE_ENCRYPTION.md`
+- **Implementation**: See `docs/ENCRYPTION_IMPLEMENTATION_SUMMARY.md`
 
 ## Socket.io Events
 

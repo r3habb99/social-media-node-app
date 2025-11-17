@@ -62,6 +62,15 @@ const MessageSchema: Schema<IMessage> = new Schema(
       ref: "Message",
       default: null,
     },
+    // Encryption fields for end-to-end encryption
+    iv: {
+      type: String,
+      required: false, // Optional for backward compatibility
+    },
+    authTag: {
+      type: String,
+      required: false, // Optional for backward compatibility
+    },
   },
   {
     timestamps: true,
@@ -70,6 +79,8 @@ const MessageSchema: Schema<IMessage> = new Schema(
       transform(doc: Document, ret: any) {
         ret.id = ret._id;
         delete ret._id;
+        // Don't expose encryption metadata to client
+        // (they're only needed internally for decryption)
       },
     },
   }

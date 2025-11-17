@@ -8,3 +8,4 @@ export * from "./multer";
 export * from "./mailer";
 export * from "./notificationService";
 export * from "./webrtcService";
+export * from "./encryption";

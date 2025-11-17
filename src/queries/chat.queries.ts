@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { Chat, Message } from "../entities";
 import { IChat } from "../interfaces";
-import { logger } from "../services";
+import { logger, decryptMessage } from "../services";
 import { transformChatMediaUrls, transformChatsMediaUrls } from "../utils/chatMediaUrl";
 import { transformMessagesMediaUrls } from "../utils/messageMediaUrl";
 import { getFullMediaUrl } from "../utils/mediaUrl";
@@ -54,7 +54,7 @@ export const fetchUserMessages = async (userId: string) => {
     // Transform profile picture URLs to full URLs
     const transformedChats = transformChatsMediaUrls(chats);
 
-    // Double-check that all profile pictures have full URLs
+    // Double-check that all profile pictures have full URLs and decrypt latestMessage
     if (transformedChats && transformedChats.length > 0) {
       transformedChats.forEach(chat => {
         if (chat.users && Array.isArray(chat.users)) {
@@ -68,6 +68,24 @@ export const fetchUserMessages = async (userId: string) => {
               }
             }
           });
+        }
+
+        // Decrypt latestMessage if it exists and is encrypted
+        if (chat.latestMessage && typeof chat.latestMessage === 'object') {
+          const msg = chat.latestMessage as any;
+          if (msg.iv && msg.authTag) {
+            try {
+              const decryptedContent = decryptMessage({
+                encryptedContent: msg.content,
+                iv: msg.iv,
+                authTag: msg.authTag
+              });
+              msg.content = decryptedContent; // Update with human-readable content
+            } catch (error) {
+              logger.error(`Error decrypting latest message for chat ${chat.id}:`, error);
+              // Keep encrypted content if decryption fails
+            }
+          }
         }
       });
     }
@@ -92,7 +110,33 @@ export const getMessages = async (chatId: string) => {
     const validMessages = messages.filter(msg => msg && msg._id);
 
     // Transform profile picture URLs to full URLs
-    return transformMessagesMediaUrls(validMessages);
+    const transformedMessages = transformMessagesMediaUrls(validMessages);
+
+    // Decrypt all messages before returning
+    const decryptedMessages = transformedMessages.map((msg: any) => {
+      // Check if message has encryption metadata
+      if (msg.iv && msg.authTag) {
+        try {
+          const decryptedContent = decryptMessage({
+            encryptedContent: msg.content,
+            iv: msg.iv,
+            authTag: msg.authTag
+          });
+          return {
+            ...msg,
+            content: decryptedContent // Return human-readable content
+          };
+        } catch (error) {
+          logger.error(`Error decrypting message ${msg.id}:`, error);
+          // Return original message if decryption fails (backward compatibility)
+          return msg;
+        }
+      }
+      // Return as-is if no encryption metadata (backward compatibility)
+      return msg;
+    });
+
+    return decryptedMessages;
   } catch (error) {
     logger.error("Error fetching messages", error);
     return [];  // Return empty array instead of undefined to avoid null checks

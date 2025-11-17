@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { Message } from "../entities";
-import { logger } from "../services";
+import { logger, encryptMessage, decryptMessage } from "../services";
 import { transformMessagesMediaUrls, transformMessageMediaUrls } from "../utils/messageMediaUrl";
 import { MessageType, MessageStatus } from "../interfaces";
 
@@ -16,10 +16,15 @@ export const saveMessage = async (
   replyToId?: string
 ) => {
   try {
+    // Encrypt the message content before saving
+    const encryptedData = encryptMessage(content);
+
     // Create message object with all fields
     const messageData: any = {
       sender: senderId,
-      content,
+      content: encryptedData.encryptedContent, // Store encrypted content
+      iv: encryptedData.iv, // Store IV for decryption
+      authTag: encryptedData.authTag, // Store auth tag for decryption
       chat: chatId,
       messageType,
       status: MessageStatus.SENT,
@@ -43,8 +48,19 @@ export const saveMessage = async (
       { path: "replyTo", populate: { path: "sender", select: "-password" } }
     ]);
 
-    // Transform all media URLs to full URLs
-    return transformMessageMediaUrls(message);
+    // Decrypt the message content before returning to client
+    const decryptedContent = decryptMessage({
+      encryptedContent: message.content,
+      iv: message.iv!,
+      authTag: message.authTag!
+    });
+
+    // Transform all media URLs to full URLs and return with decrypted content
+    const transformedMessage = transformMessageMediaUrls(message);
+    return {
+      ...transformedMessage,
+      content: decryptedContent // Return human-readable content
+    };
   } catch (error) {
     logger.error("Error saving message", error);
     throw error;
@@ -81,7 +97,27 @@ export const markMessageAsRead = async (messageId: string, userId: string) => {
       { path: "replyTo", populate: { path: "sender", select: "-password" } }
     ]);
 
-    return transformMessageMediaUrls(message);
+    const transformedMessage = transformMessageMediaUrls(message);
+
+    // Decrypt the message content before returning
+    if (transformedMessage && transformedMessage.iv && transformedMessage.authTag) {
+      try {
+        const decryptedContent = decryptMessage({
+          encryptedContent: transformedMessage.content,
+          iv: transformedMessage.iv,
+          authTag: transformedMessage.authTag
+        });
+        return {
+          ...transformedMessage,
+          content: decryptedContent // Return human-readable content
+        };
+      } catch (error) {
+        logger.error(`Error decrypting message ${messageId}:`, error);
+        return transformedMessage;
+      }
+    }
+
+    return transformedMessage;
   } catch (error) {
     logger.error("Error marking message as read", error);
     throw error;
@@ -107,7 +143,27 @@ export const deleteMessageById = async (messageId: string) => {
       { path: "chat" }
     ]);
 
-    return transformMessageMediaUrls(message);
+    const transformedMessage = transformMessageMediaUrls(message);
+
+    // Decrypt the message content before returning
+    if (transformedMessage && transformedMessage.iv && transformedMessage.authTag) {
+      try {
+        const decryptedContent = decryptMessage({
+          encryptedContent: transformedMessage.content,
+          iv: transformedMessage.iv,
+          authTag: transformedMessage.authTag
+        });
+        return {
+          ...transformedMessage,
+          content: decryptedContent // Return human-readable content
+        };
+      } catch (error) {
+        logger.error(`Error decrypting deleted message ${messageId}:`, error);
+        return transformedMessage;
+      }
+    }
+
+    return transformedMessage;
   } catch (error) {
     logger.error("Error deleting message", error);
     throw error;
@@ -128,9 +184,12 @@ export const editMessageById = async (
       throw new Error("Message not found");
     }
 
-    // Update content if provided
+    // Update content if provided - encrypt it first
     if (content) {
-      message.content = content;
+      const encryptedData = encryptMessage(content);
+      message.content = encryptedData.encryptedContent;
+      message.iv = encryptedData.iv;
+      message.authTag = encryptedData.authTag;
     }
 
     // Update media if provided
@@ -149,7 +208,27 @@ export const editMessageById = async (
       { path: "replyTo", populate: { path: "sender", select: "-password" } }
     ]);
 
-    return transformMessageMediaUrls(message);
+    const transformedMessage = transformMessageMediaUrls(message);
+
+    // Decrypt the message content before returning
+    if (transformedMessage && transformedMessage.iv && transformedMessage.authTag) {
+      try {
+        const decryptedContent = decryptMessage({
+          encryptedContent: transformedMessage.content,
+          iv: transformedMessage.iv,
+          authTag: transformedMessage.authTag
+        });
+        return {
+          ...transformedMessage,
+          content: decryptedContent // Return human-readable content
+        };
+      } catch (error) {
+        logger.error(`Error decrypting edited message ${messageId}:`, error);
+        return transformedMessage;
+      }
+    }
+
+    return transformedMessage;
   } catch (error) {
     logger.error("Error editing message", error);
     throw error;
@@ -181,7 +260,33 @@ export const getMessages = async (chatId: string, limit = 20, skip = 0) => {
       ]);
 
     // Transform all media URLs to full URLs
-    return transformMessagesMediaUrls(messages);
+    const transformedMessages = transformMessagesMediaUrls(messages);
+
+    // Decrypt all messages before returning
+    const decryptedMessages = transformedMessages.map((msg: any) => {
+      // Check if message has encryption metadata
+      if (msg.iv && msg.authTag) {
+        try {
+          const decryptedContent = decryptMessage({
+            encryptedContent: msg.content,
+            iv: msg.iv,
+            authTag: msg.authTag
+          });
+          return {
+            ...msg,
+            content: decryptedContent // Return human-readable content
+          };
+        } catch (error) {
+          logger.error(`Error decrypting message ${msg.id}:`, error);
+          // Return original message if decryption fails (backward compatibility)
+          return msg;
+        }
+      }
+      // Return as-is if no encryption metadata (backward compatibility)
+      return msg;
+    });
+
+    return decryptedMessages;
   } catch (error) {
     logger.error(`Error fetching messages for chat ${chatId}`, error);
     throw error;
@@ -190,6 +295,8 @@ export const getMessages = async (chatId: string, limit = 20, skip = 0) => {
 
 /**
  * Search messages by content or sender with pagination and sorting
+ * NOTE: For encrypted messages, we fetch all messages, decrypt them, and then filter
+ * This is less efficient but necessary for encrypted content
  */
 export const searchMessages = async (
   chatId: string,
@@ -205,31 +312,70 @@ export const searchMessages = async (
       throw new Error("Invalid chat ID format - must be a valid MongoDB ObjectId");
     }
 
-    const regex = new RegExp(query, "i");
-    const sortOptions: any = {};
-    sortOptions[sortBy] = sortOrder === "asc" ? 1 : -1;
-
-    const messages = await Message.find({
+    // Fetch ALL messages from the chat (we need to decrypt them to search)
+    const allMessages = await Message.find({
       chat: new mongoose.Types.ObjectId(chatId),
       isDeleted: false,
-      $or: [
-        { content: regex },
-        // You can add more search fields here if needed
-        // { "sender.username": regex }, // Uncomment if you want to search by sender username
-      ],
     })
     .populate([
       { path: "sender", select: "-password" },
       { path: "chat" },
       { path: "readBy", select: "-password" },
       { path: "replyTo", populate: { path: "sender", select: "-password" } }
-    ])
-    .sort(sortOptions)
-    .skip(skip)
-    .limit(limit);
+    ]);
 
     // Transform all media URLs to full URLs
-    return transformMessagesMediaUrls(messages);
+    const transformedMessages = transformMessagesMediaUrls(allMessages);
+
+    // Decrypt all messages
+    const decryptedMessages = transformedMessages.map((msg: any) => {
+      // Check if message has encryption metadata
+      if (msg.iv && msg.authTag) {
+        try {
+          const decryptedContent = decryptMessage({
+            encryptedContent: msg.content,
+            iv: msg.iv,
+            authTag: msg.authTag
+          });
+          return {
+            ...msg,
+            content: decryptedContent // Decrypted human-readable content
+          };
+        } catch (error) {
+          logger.error(`Error decrypting message ${msg.id}:`, error);
+          return msg;
+        }
+      }
+      return msg;
+    });
+
+    // Now search in the decrypted content
+    const regex = new RegExp(query, "i");
+    const filteredMessages = decryptedMessages.filter((msg: any) => {
+      return regex.test(msg.content);
+      // You can add more search fields here if needed
+      // || regex.test(msg.sender?.username)
+    });
+
+    // Sort the filtered messages
+    const sortOptions: any = {};
+    sortOptions[sortBy] = sortOrder === "asc" ? 1 : -1;
+
+    filteredMessages.sort((a: any, b: any) => {
+      const aValue = a[sortBy];
+      const bValue = b[sortBy];
+
+      if (sortOrder === "asc") {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    // Apply pagination
+    const paginatedMessages = filteredMessages.slice(skip, skip + limit);
+
+    return paginatedMessages;
   } catch (error) {
     logger.error("Error searching messages", error);
     throw error;
@@ -254,7 +400,27 @@ export const getMessageById = async (messageId: string) => {
     }
 
     // Transform all media URLs to full URLs
-    return transformMessageMediaUrls(message);
+    const transformedMessage = transformMessageMediaUrls(message);
+
+    // Decrypt the message content if encrypted
+    if (transformedMessage && transformedMessage.iv && transformedMessage.authTag) {
+      try {
+        const decryptedContent = decryptMessage({
+          encryptedContent: transformedMessage.content,
+          iv: transformedMessage.iv,
+          authTag: transformedMessage.authTag
+        });
+        return {
+          ...transformedMessage,
+          content: decryptedContent // Return human-readable content
+        };
+      } catch (error) {
+        logger.error(`Error decrypting message ${messageId}:`, error);
+        return transformedMessage;
+      }
+    }
+
+    return transformedMessage;
   } catch (error) {
     logger.error(`Error fetching message with ID ${messageId}`, error);
     throw error;

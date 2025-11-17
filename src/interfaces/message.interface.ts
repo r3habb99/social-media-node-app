@@ -23,7 +23,7 @@ export enum MessageStatus {
 // Define an interface for the Message document
 export interface IMessage extends Document {
   sender: mongoose.Types.ObjectId | IUser;
-  content: string;
+  content: string; // Stores encrypted content in DB
   chat: mongoose.Types.ObjectId | IChat;
   readBy: mongoose.Types.ObjectId[] | IUser[];
   isDeleted: Boolean;
@@ -34,6 +34,9 @@ export interface IMessage extends Document {
   status: MessageStatus;
   media?: string[]; // Array of media URLs
   replyTo?: mongoose.Types.ObjectId | IMessage; // For reply functionality
+  // Encryption fields
+  iv?: string; // Initialization vector for encryption
+  authTag?: string; // Authentication tag for encryption
 }
 
 // Interface for populated message with user details
