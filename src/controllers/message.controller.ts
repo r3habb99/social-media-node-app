@@ -22,15 +22,16 @@ import { MessageType } from "../interfaces";
  */
 export const createMessage = async (req: AuthRequest, res: Response) => {
   try {
-    const { content, chatId, messageType, media, replyToId } = req.body;
+    let { content, chatId, messageType, media, replyToId } = req.body;
 
-    if (!content || !chatId) {
-      logger.error("Content and chatId are required");
+    // Validate required fields - content is optional if media is provided
+    if (!chatId) {
+      logger.error("chatId is required");
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
         message: HttpResponseMessages.BAD_REQUEST,
-        error: "Content and chatId are required",
+        error: "chatId is required",
       });
     }
 
@@ -47,13 +48,56 @@ export const createMessage = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Determine message type based on input or default to TEXT
-    const msgType = messageType ||
-      (media && media.length > 0 ?
-        (media[0].includes('.mp4') || media[0].includes('.mov') ? MessageType.VIDEO :
-         media[0].includes('.mp3') || media[0].includes('.wav') ? MessageType.AUDIO :
-         MessageType.IMAGE) :
-        MessageType.TEXT);
+    // Process uploaded files if any
+    const mediaUrls: string[] = [];
+    if (req.files && (req.files as Express.Multer.File[]).length > 0) {
+      const files = req.files as Express.Multer.File[];
+      logger.info(`Found ${files.length} uploaded files for message`);
+
+      // Generate relative paths for each uploaded file
+      files.forEach(file => {
+        const directory = file.destination.includes('chat-media') ? 'chat-media' : 'others';
+        const relativePath = `/uploads/${directory}/${file.filename}`;
+        mediaUrls.push(relativePath);
+        logger.info(`Added relative media path: ${relativePath} for file: ${file.filename}`);
+      });
+    }
+
+    // Merge uploaded files with any media URLs from request body
+    const allMedia = [...mediaUrls, ...(media || [])];
+
+    // Content is required if no media is provided
+    if (!content && allMedia.length === 0) {
+      logger.error("Either content or media is required");
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: HttpResponseMessages.BAD_REQUEST,
+        error: "Either content or media is required",
+      });
+    }
+
+    // Set default content if only media is provided
+    if (!content && allMedia.length > 0) {
+      content = ""; // Empty content for media-only messages
+    }
+
+    // Determine message type based on uploaded files or input
+    let msgType = messageType;
+    if (!msgType && allMedia.length > 0) {
+      const firstMedia = allMedia[0];
+      if (firstMedia.includes('.mp4') || firstMedia.includes('.mov') || firstMedia.includes('.avi')) {
+        msgType = MessageType.VIDEO;
+      } else if (firstMedia.includes('.mp3') || firstMedia.includes('.wav')) {
+        msgType = MessageType.AUDIO;
+      } else if (firstMedia.includes('.jpg') || firstMedia.includes('.jpeg') || firstMedia.includes('.png')) {
+        msgType = MessageType.IMAGE;
+      } else {
+        msgType = MessageType.FILE;
+      }
+    } else if (!msgType) {
+      msgType = MessageType.TEXT;
+    }
 
     // Save message with all provided data
     const message = await saveMessage(
@@ -61,7 +105,7 @@ export const createMessage = async (req: AuthRequest, res: Response) => {
       content,
       chatId,
       msgType,
-      media || [],
+      allMedia,
       replyToId
     );
 
@@ -70,7 +114,7 @@ export const createMessage = async (req: AuthRequest, res: Response) => {
       emitNewMessage(chatId, message);
     }
 
-    logger.info(`Message created successfully by user ${senderId} and broadcasted via socket`);
+    logger.info(`Message created successfully by user ${senderId} with ${allMedia.length} media files and broadcasted via socket`);
     sendResponse({
       res,
       statusCode: HttpStatusCodes.CREATED,
@@ -207,21 +251,13 @@ export const deleteMessage = async (req: AuthRequest, res: Response) => {
 export const editMessage = async (req: AuthRequest, res: Response) => {
   try {
     const { messageId } = req.params;
-    const { content, chatId, media } = req.body;
+    let { content, chatId, media } = req.body;
 
     if (!messageId) {
       return sendResponse({
         res,
         statusCode: HttpStatusCodes.BAD_REQUEST,
         message: "messageId is required",
-      });
-    }
-
-    if (!content && !media) {
-      return sendResponse({
-        res,
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        message: "Either content or media must be provided",
       });
     }
 
@@ -233,14 +269,41 @@ export const editMessage = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const updatedMessage = await editMessageById(messageId, content, media);
+    // Process uploaded files if any
+    const mediaUrls: string[] = [];
+    if (req.files && (req.files as Express.Multer.File[]).length > 0) {
+      const files = req.files as Express.Multer.File[];
+      logger.info(`Found ${files.length} uploaded files for message edit`);
+
+      // Generate relative paths for each uploaded file
+      files.forEach(file => {
+        const directory = file.destination.includes('chat-media') ? 'chat-media' : 'others';
+        const relativePath = `/uploads/${directory}/${file.filename}`;
+        mediaUrls.push(relativePath);
+        logger.info(`Added relative media path: ${relativePath} for file: ${file.filename}`);
+      });
+    }
+
+    // Merge uploaded files with any media URLs from request body
+    const allMedia = [...mediaUrls, ...(media || [])];
+
+    // Either content or media must be provided
+    if (!content && allMedia.length === 0) {
+      return sendResponse({
+        res,
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        message: "Either content or media must be provided",
+      });
+    }
+
+    const updatedMessage = await editMessageById(messageId, content, allMedia.length > 0 ? allMedia : undefined);
 
     // Emit socket event for real-time update
     if (updatedMessage) {
       emitMessageEdited(chatId, updatedMessage);
     }
 
-    logger.info(`Message ${messageId} edited and broadcasted via socket`);
+    logger.info(`Message ${messageId} edited with ${allMedia.length} media files and broadcasted via socket`);
     sendResponse({
       res,
       statusCode: HttpStatusCodes.OK,

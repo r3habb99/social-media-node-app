@@ -145,12 +145,12 @@ export const schemas = {
   // Message related schemas
   CreateMessage: {
     type: "object",
-    required: ["content", "chatId"],
+    required: ["chatId"],
     properties: {
       content: {
         type: "string",
         example: "Hello message",
-        description: "Content of the message"
+        description: "Content of the message (optional if media is provided)"
       },
       chatId: {
         type: "string",
@@ -161,13 +161,13 @@ export const schemas = {
         type: "string",
         enum: ["text", "image", "video", "file", "audio", "system"],
         example: "text",
-        description: "Type of message content (optional, defaults to text or determined from media)"
+        description: "Type of message content (optional, defaults to text or auto-detected from media)"
       },
       media: {
         type: "array",
         items: { type: "string" },
         example: ["url1.jpg", "url2.jpg"],
-        description: "Array of media URLs (optional)"
+        description: "Array of media URLs or files (optional, supports up to 5 files)"
       },
       replyToId: {
         type: "string",
@@ -175,6 +175,7 @@ export const schemas = {
         description: "ID of the message this is replying to (optional)"
       }
     },
+    description: "Either content or media must be provided"
   },
   EditMessage: {
     type: "object",

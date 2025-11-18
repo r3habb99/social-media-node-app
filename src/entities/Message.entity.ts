@@ -14,7 +14,8 @@ const MessageSchema: Schema<IMessage> = new Schema(
     content: {
       type: String,
       trim: true,
-      required: true,
+      required: false, // Content is optional when media is provided
+      default: "", // Default to empty string for media-only messages
     },
     chat: {
       type: ObjectId,

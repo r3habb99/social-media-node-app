@@ -16,6 +16,7 @@ if (!fs.existsSync(BASE_UPLOAD_DIR)) {
 const profilePicsDir = path.join(BASE_UPLOAD_DIR, "profile-pictures");
 const coverPhotosDir = path.join(BASE_UPLOAD_DIR, "cover-photos");
 const postMediaDir = path.join(BASE_UPLOAD_DIR, "post-media");
+const chatMediaDir = path.join(BASE_UPLOAD_DIR, "chat-media");
 
 if (!fs.existsSync(profilePicsDir)) {
   logger.info(`Creating profile pictures directory: ${profilePicsDir}`);
@@ -32,6 +33,11 @@ if (!fs.existsSync(postMediaDir)) {
   fs.mkdirSync(postMediaDir, { recursive: true });
 }
 
+if (!fs.existsSync(chatMediaDir)) {
+  logger.info(`Creating chat media directory: ${chatMediaDir}`);
+  fs.mkdirSync(chatMediaDir, { recursive: true });
+}
+
 // Configure Multer storage dynamically
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -44,6 +50,9 @@ const storage = multer.diskStorage({
     } else if (req.originalUrl.includes("/post") && !req.originalUrl.includes("retweet") && !req.originalUrl.includes("like")) {
       uploadFolder = "post-media";
       logger.info("Detected post media upload");
+    } else if (req.originalUrl.includes("/message")) {
+      uploadFolder = "chat-media";
+      logger.info("Detected chat media upload");
     }
 
     const finalPath = path.join(BASE_UPLOAD_DIR, uploadFolder);
